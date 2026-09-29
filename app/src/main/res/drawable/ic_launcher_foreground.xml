@@ -1,0 +1,56 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Rack de Servidor Superior -->
+    <path
+        android:fillColor="#1C1C1E"
+        android:pathData="M34,36h40c2.2,0 4,1.8 4,4v6c0,2.2 -1.8,4 -4,4H34c-2.2,0 -4,-1.8 -4,-4v-6c0,-2.2 1.8,-4 4,-4z" />
+    <path
+        android:fillColor="#2C2C2E"
+        android:strokeColor="#3A3A3C"
+        android:strokeWidth="1"
+        android:pathData="M34,36h40c2.2,0 4,1.8 4,4v6c0,2.2 -1.8,4 -4,4H34c-2.2,0 -4,-1.8 -4,-4v-6c0,-2.2 1.8,-4 4,-4z" />
+    <!-- LED verde ativo do Servidor Superior -->
+    <path
+        android:fillColor="#30D158"
+        android:pathData="M40,43m-2.5,0a2.5,2.5 0 1,1 5,0a2.5,2.5 0 1,1 -5,0" />
+    <!-- Linha de ventilação do Servidor Superior -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#8E8E93"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round"
+        android:pathData="M48,43h24" />
+
+    <!-- Rack de Servidor Inferior -->
+    <path
+        android:fillColor="#1C1C1E"
+        android:pathData="M34,54h40c2.2,0 4,1.8 4,4v6c0,2.2 -1.8,4 -4,4H34c-2.2,0 -4,-1.8 -4,-4v-6c0,-2.2 1.8,-4 4,-4z" />
+    <path
+        android:fillColor="#2C2C2E"
+        android:strokeColor="#3A3A3C"
+        android:strokeWidth="1"
+        android:pathData="M34,54h40c2.2,0 4,1.8 4,4v6c0,2.2 -1.8,4 -4,4H34c-2.2,0 -4,-1.8 -4,-4v-6c0,-2.2 1.8,-4 4,-4z" />
+    <!-- LED azul ativo do Servidor Inferior -->
+    <path
+        android:fillColor="#0A84FF"
+        android:pathData="M40,61m-2.5,0a2.5,2.5 0 1,1 5,0a2.5,2.5 0 1,1 -5,0" />
+    <!-- Linha de ventilação do Servidor Inferior -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#8E8E93"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round"
+        android:pathData="M48,61h24" />
+
+    <!-- Broto/Folha do Spring nascendo do topo em verde elétrico -->
+    <path
+        android:fillColor="#30D158"
+        android:pathData="M54,34c-2.5,-6 1,-12 8,-14c-1,7 -4,11 -8,14z" />
+    <path
+        android:fillColor="#28B84D"
+        android:pathData="M54,34c-4,-3 -6,-7 -5,-11c4,1 7,5 5,11z" />
+</vector>

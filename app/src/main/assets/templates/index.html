@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{appName}} • Showcase nano-spring</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- HEADER -->
+        <header class="header">
+            <div class="header-title">
+                <h1>{{appName}} Showcase</h1>
+                <p>Aplicação de Referência do <strong>{{frameworkName}} v{{frameworkVersion}}</strong> rodando nativamente no Android</p>
+            </div>
+            <div class="badges">
+                <span class="badge badge-live">
+                    <span class="badge-pulse"></span>
+                    ONLINE :{{port}}
+                </span>
+                <span class="badge">
+                    📱 {{deviceModel}} (Android {{androidVersion}})
+                </span>
+                <span class="badge" id="sseBadge">
+                    📡 SSE Conectado
+                </span>
+            </div>
+        </header>
+
+        <!-- TELEMETRY METRICS -->
+        <section class="metrics-grid">
+            <div class="metric-card">
+                <span class="metric-label">Tempo Ativo (Uptime)</span>
+                <span class="metric-value" id="valUptime">{{uptime}}</span>
+                <span class="metric-sub">Servidor em execução</span>
+            </div>
+            <div class="metric-card">
+                <span class="metric-label">Requisições HTTP</span>
+                <span class="metric-value" id="valRequests" style="color: var(--accent-blue);">{{requestCount}}</span>
+                <span class="metric-sub">Atendidas pelo ServerLogBus</span>
+            </div>
+            <div class="metric-card">
+                <span class="metric-label">Memória Heap Dalvik</span>
+                <span class="metric-value" id="valMemory" style="color: var(--accent-orange);">{{usedMemory}} MB</span>
+                <span class="metric-sub">de {{totalMemory}} MB alocados</span>
+            </div>
+            <div class="metric-card">
+                <span class="metric-label">Usuários Cadastrados</span>
+                <span class="metric-value" style="color: var(--accent-green);">{{userCount}}</span>
+                <span class="metric-sub">Armazenamento SQLite Room</span>
+            </div>
+        </section>
+
+        <!-- REST API CATALOGUE -->
+        <section class="section-card">
+            <div class="section-header">
+                <h2>Catálogo de Endpoints REST API</h2>
+                <span style="font-size:12px; color:var(--text-muted);">JSON automatizado por Jackson / Gson</span>
+            </div>
+            <div style="overflow-x:auto;">
+                <table class="api-table">
+                    <thead>
+                        <tr>
+                            <th>Método</th>
+                            <th>Endpoint</th>
+                            <th>Descrição / Funcionalidade</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="method-tag method-get">GET</span></td>
+                            <td><a href="/health" target="_blank" class="code-link">/health</a></td>
+                            <td>Verifica integridade e injeção <code>@Value("${app.welcome.message}")</code></td>
+                            <td><a href="/health" target="_blank" class="btn-action">Testar</a></td>
+                        </tr>
+                        <tr>
+                            <td><span class="method-tag method-get">GET</span></td>
+                            <td><a href="/api/users" target="_blank" class="code-link">/api/users</a></td>
+                            <td>Retorna lista completa de usuários do Room Database</td>
+                            <td><a href="/api/users" target="_blank" class="btn-action">Testar</a></td>
+                        </tr>
+                        <tr>
+                            <td><span class="method-tag method-get">GET</span></td>
+                            <td><a href="/api/users/1" target="_blank" class="code-link">/api/users/:id</a></td>
+                            <td>Busca usuário por ID com <code>@PathVariable("id")</code></td>
+                            <td><a href="/api/users/1" target="_blank" class="btn-action">Testar</a></td>
+                        </tr>
+                        <tr>
+                            <td><span class="method-tag method-get">GET</span></td>
+                            <td><a href="/api/users/search?q=matheus" target="_blank" class="code-link">/api/users/search?q=...</a></td>
+                            <td>Filtro de busca em memória via <code>@RequestParam("q")</code></td>
+                            <td><a href="/api/users/search?q=matheus" target="_blank" class="btn-action">Testar</a></td>
+                        </tr>
+                        <tr>
+                            <td><span class="method-tag method-post">POST</span></td>
+                            <td><span class="code-link" style="color:var(--text-primary);">/api/users</span></td>
+                            <td>Cria novo usuário via JSON <code>@RequestBody</code></td>
+                            <td><button class="btn-action" onclick="testCreateUser()">Simular POST</button></td>
+                        </tr>
+                        <tr>
+                            <td><span class="method-tag method-get">GET</span></td>
+                            <td><a href="/api/events" target="_blank" class="code-link">/api/events</a></td>
+                            <td>Stream contínuo de métricas via <code>SseEmitter</code> (Server-Sent Events)</td>
+                            <td><a href="/api/events" target="_blank" class="btn-action">Ver Stream</a></td>
+                        </tr>
+                        <tr>
+                            <td><span class="method-tag method-get">GET</span></td>
+                            <td><a href="/web/html" target="_blank" class="code-link">/web/html</a></td>
+                            <td>Resposta HTML direta sem template (MimeType <code>text/html</code>)</td>
+                            <td><a href="/web/html" target="_blank" class="btn-action">Testar</a></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- SERVER-SIDE RENDERING (SSR MUSTACHE) & PROFILES -->
+        <section class="section-card">
+            <div class="section-header">
+                <h2>Renderização Server-Side (JMustache SSR)</h2>
+                <span style="font-size:12px; color:var(--text-muted);">Páginas dinâmicas renderizadas no smartphone</span>
+            </div>
+            <p style="font-size:14px; color:var(--text-muted); margin-top:0;">
+                O nano-spring processa templates HTML Mustache diretamente a partir de <code>assets/templates/</code> e injeta entidades do Room Database via <code>ModelAndView</code>:
+            </p>
+            <div class="users-list">
+                {{#users}}
+                <div class="user-item">
+                    <div class="user-info">
+                        <strong>#{{id}} {{name}}</strong>
+                        <span>@{{username}}</span>
+                    </div>
+                    <a href="/web/profile/{{id}}" class="btn-action btn-primary">Ver Perfil</a>
+                </div>
+                {{/users}}
+            </div>
+        </section>
+
+        <!-- MULTIPART FILE UPLOAD DEMO -->
+        <section class="section-card">
+            <div class="section-header">
+                <h2>Demonstração de Upload Multipart (@UploadedFile)</h2>
+                <span style="font-size:12px; color:var(--text-muted);">Armazenamento em /sdcard/AndroidServer/</span>
+            </div>
+            <p style="font-size:14px; color:var(--text-muted); margin-top:0;">
+                Envie arquivos diretamente para o sistema de arquivos do Moto G4 Play associando-os a um usuário cadastrado:
+            </p>
+            <form action="/web/upload" method="POST" enctype="multipart/form-data" class="upload-form">
+                <div>
+                    <label style="font-size:12px; color:var(--text-muted); display:block; margin-bottom:4px;">Associar a Usuário:</label>
+                    <select name="userId" required>
+                        {{#users}}
+                        <option value="{{id}}">#{{id}} - {{name}} (@{{username}})</option>
+                        {{/users}}
+                    </select>
+                </div>
+                <div style="flex: 1; min-width: 200px;">
+                    <label style="font-size:12px; color:var(--text-muted); display:block; margin-bottom:4px;">Arquivo para Upload:</label>
+                    <input type="file" name="documento" required style="width: 100%;">
+                </div>
+                <div style="align-self: flex-end;">
+                    <button type="submit" class="btn-action btn-primary" style="padding: 10px 18px;">Upload para o Android</button>
+                </div>
+            </form>
+        </section>
+
+        <!-- FOOTER -->
+        <footer class="footer">
+            <p>
+                <strong>AndroidServer</strong> • Powered by <a href="https://github.com/matheuscruzsouza/nano-spring" target="_blank" style="color:var(--accent-blue); text-decoration:none;">nano-spring 1.2.0</a>
+            </p>
+            <p style="font-size:12px; margin-top:4px;">
+                Endereço IP Local: <code>{{ipAddress}}:{{port}}</code> • Android API Level {{sdkInt}}
+            </p>
+        </footer>
+    </div>
+
+    <!-- SSE CLIENT SCRIPT -->
+    <script>
+        // Real-time telemetry via SseEmitter (/api/events)
+        if (window.EventSource) {
+            const evtSource = new EventSource("/api/events");
+            evtSource.addEventListener("metrics", function(event) {
+                try {
+                    const data = JSON.parse(event.data);
+                    if (data.uptime) document.getElementById("valUptime").innerText = data.uptime;
+                    if (data.requests !== undefined) document.getElementById("valRequests").innerText = data.requests;
+                    if (data.usedMemoryMb !== undefined) document.getElementById("valMemory").innerText = data.usedMemoryMb + " MB";
+                } catch(e) {}
+            });
+            evtSource.onerror = function() {
+                // If stream finishes, reconnect gracefully after delay
+                setTimeout(() => {
+                    new EventSource("/api/events");
+                }, 5000);
+            };
+        }
+
+        // Test POST API helper
+        function testCreateUser() {
+            const randomId = Math.floor(Math.random() * 900) + 100;
+            const payload = {
+                name: "Usuário Teste " + randomId,
+                username: "teste_" + randomId
+            };
+            fetch("/api/users", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            })
+            .then(res => res.json())
+            .then(user => {
+                alert("Usuário criado com sucesso via REST API!\nID: #" + user.id + "\nNome: " + user.name + "\nUsername: @" + user.username);
+                window.location.reload();
+            })
+            .catch(err => {
+                alert("Erro ao criar usuário: " + err);
+            });
+        }
+    </script>
+</body>
+</html>

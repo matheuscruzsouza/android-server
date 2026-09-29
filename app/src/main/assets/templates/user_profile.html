@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Perfil de {{name}} • AndroidServer</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container container-narrow">
+        <!-- TOP NAVIGATION -->
+        <nav class="nav-bar">
+            <a href="/" class="nav-link">
+                <span style="font-size: 18px;">←</span> Voltar ao Início
+            </a>
+            <div class="badges">
+                <span class="badge badge-live">
+                    <span class="badge-pulse"></span>
+                    Servidor Ativo
+                </span>
+            </div>
+        </nav>
+
+        {{#userExists}}
+        <!-- USER PROFILE CARD -->
+        <div class="card">
+            <div class="section-header" style="margin-bottom: 20px;">
+                <div>
+                    <h1 style="font-size: 24px; margin: 0; font-weight: 800;">{{name}}</h1>
+                    <p style="margin: 4px 0 0 0; color: var(--text-muted); font-size: 14px;">
+                        @{{username}} • Registro <code>#{{id}}</code>
+                    </p>
+                </div>
+                <span class="badge" style="font-size: 13px;">
+                    👤 Usuário Room
+                </span>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-top: 16px;">
+                <div style="background: var(--card-sub-bg); padding: 12px; border-radius: 10px;">
+                    <span style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 700; display: block;">ID Usuário</span>
+                    <strong style="font-size: 16px;">#{{id}}</strong>
+                </div>
+                <div style="background: var(--card-sub-bg); padding: 12px; border-radius: 10px;">
+                    <span style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 700; display: block;">Username</span>
+                    <strong style="font-size: 16px;">{{username}}</strong>
+                </div>
+                <div style="background: var(--card-sub-bg); padding: 12px; border-radius: 10px;">
+                    <span style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 700; display: block;">Banco de Dados</span>
+                    <strong style="font-size: 16px; color: var(--accent-green);">SQLite Room</strong>
+                </div>
+            </div>
+        </div>
+
+        <!-- USER FILES CARD -->
+        <div class="card">
+            <div class="section-header">
+                <h2>Arquivos do Usuário</h2>
+                <span style="font-size: 12px; color: var(--text-muted);">Armazenamento Android</span>
+            </div>
+
+            <ul class="files-list">
+                {{#files}}
+                <li class="file-item">
+                    <div class="file-info">
+                        <span style="font-size: 20px;">📄</span>
+                        <div>
+                            <span class="file-name">{{fileName}}</span>
+                            <span style="display: block; font-size: 11px; color: var(--text-muted); font-family: ui-monospace, monospace;">
+                                ID do Arquivo: #{{id}}
+                            </span>
+                        </div>
+                    </div>
+                    <a href="/web/download/{{id}}" class="btn-action btn-primary">
+                        ⬇ Baixar
+                    </a>
+                </li>
+                {{/files}}
+                {{^files}}
+                <div style="text-align: center; padding: 24px 12px; color: var(--text-muted);">
+                    <p style="margin: 0; font-size: 14px;">Nenhum arquivo enviado ainda para este usuário.</p>
+                    <span style="font-size: 12px;">Utilize o formulário abaixo para fazer o upload direto.</span>
+                </div>
+                {{/files}}
+            </ul>
+        </div>
+
+        <!-- UPLOAD SECTION -->
+        <div class="card">
+            <div class="section-header">
+                <h2>Upload de Arquivo (@UploadedFile)</h2>
+                <span style="font-size: 12px; color: var(--text-muted);">Envio Multipart</span>
+            </div>
+            <p style="font-size: 13px; color: var(--text-muted); margin-top: 0;">
+                O arquivo será salvo no diretório isolado do usuário em <code>/sdcard/AndroidServer/users/{{username}}/files/</code>
+            </p>
+
+            <form action="/web/upload" method="POST" enctype="multipart/form-data">
+                <input type="hidden" name="userId" value="{{id}}">
+                <div class="form-group">
+                    <label for="docInput">Selecione o arquivo para envio:</label>
+                    <input type="file" id="docInput" name="documento" required class="form-control">
+                </div>
+                <button type="submit" class="btn-action btn-primary btn-block" style="padding: 12px 20px;">
+                    ⬆ Enviar Arquivo para o Dispositivo
+                </button>
+            </form>
+        </div>
+        {{/userExists}}
+
+        {{^userExists}}
+        <!-- ERROR STATE (USER NOT FOUND) -->
+        <div class="card" style="text-align: center; padding: 40px 20px;">
+            <div style="font-size: 48px; margin-bottom: 12px;">⚠️</div>
+            <h1 style="font-size: 22px; color: var(--accent-red); margin-bottom: 8px;">Usuário Não Encontrado</h1>
+            <p style="color: var(--text-muted); max-width: 400px; margin: 0 auto 24px auto; font-size: 14px;">
+                O usuário solicitado não foi localizado no banco de dados SQLite local.
+            </p>
+            <div style="display: flex; justify-content: center; gap: 12px;">
+                <a href="/" class="btn-action btn-primary">Voltar à Página Inicial</a>
+                <a href="/api/users" target="_blank" class="btn-action">Ver JSON de Usuários</a>
+            </div>
+        </div>
+        {{/userExists}}
+
+        <!-- FOOTER -->
+        <footer class="footer">
+            <p><strong>AndroidServer</strong> • nano-spring 1.2.0 • Executando no dispositivo móvel</p>
+        </footer>
+    </div>
+</body>
+</html>
