@@ -1,8 +1,8 @@
-# AndroidServer • Showcase & Referência do nano-spring
+# AndroidServer • Showcase & Referência do nano-spring 1.3.0
 
 > **A aplicação oficial de referência ("PetClinic") do micro-framework [nano-spring](https://github.com/matheuscruzsouza/nano-spring) no Android.**
 
-O **AndroidServer** demonstra como transformar um smartphone físico Android (testado e otimizado para o **Motorola Moto G4 Play / Android 7.1.1 API 25**) em um servidor web moderno, completo e de baixo consumo de recursos, executando endpoints RESTful, páginas dinâmicas renderizadas no dispositivo (SSR Mustache), streaming em tempo real (Server-Sent Events), uploads de arquivos (Multipart) e persistência local com SQLite via Android Room.
+O **AndroidServer** demonstra como transformar um smartphone físico Android (testado e otimizado para o **Motorola Moto G4 Play / Android 7.1.1 API 25**) em um servidor web moderno, completo e de baixo consumo de recursos, executando endpoints RESTful, páginas dinâmicas renderizadas no dispositivo (SSR Mustache), streaming em tempo real (Server-Sent Events), uploads de arquivos (Multipart), persistência local com SQLite via Android Room e **migrações automáticas de esquemas SQL com o novo `SqliteMigrator` e anotação `@Repository` do nano-spring 1.3.0**.
 
 ---
 
@@ -14,6 +14,8 @@ O **AndroidServer** demonstra como transformar um smartphone físico Android (te
 | **REST API com JSON** | Endpoints serializados automaticamente para JSON | `@RestController("/api/users")`, `@RequestBody`, `@PathVariable` |
 | **Server-Side Rendering (SSR)** | Páginas HTML dinâmicas com JMustache compiladas no dispositivo | `ModelAndView("user_profile")`, assets HTML/CSS/JS |
 | **Server-Sent Events (SSE)** | Streaming contínuo de telemetria (Uptime, requisições, memória) em tempo real | `SseEmitter` em `/api/events` (`text/event-stream`) |
+| **Migrações SQLite Nativas (1.3.0)** | Versionamento de banco estilo Flyway executando scripts em `assets/db/migration/V*__*.sql` | `SqliteMigrator`, `nano_schema_history` |
+| **Camada de Repositório (1.3.0)** | Injeção gerenciada de classes de persistência | `@Repository`, `Server.getDatabase()` |
 | **Upload de Arquivos Multipart** | Envio de documentos diretamente para o armazenamento do Android | `@UploadedFile("documento")`, `FileService` |
 | **Download de Arquivos** | Download binário de arquivos persistidos no aparelho | `ResponseEntity.ok(file)` (`application/octet-stream`) |
 | **Injeção de Configurações** | Leitura de propriedades de configuração em tempo de execução | `@Value("${app.welcome.message}")`, `application.properties` |
@@ -30,6 +32,7 @@ O **AndroidServer** demonstra como transformar um smartphone físico Android (te
 - **Gradle:** 8.6
 - **Android Gradle Plugin (AGP):** 8.2.2 (estável e compatível com Java 17)
 - **Java:** OpenJDK 17 (`JavaVersion.VERSION_11` bytecode target)
+- **Versão nano-spring:** `1.3.0`
 
 ---
 
@@ -73,6 +76,7 @@ Abra seu navegador em:
 - **`GET /` ou `GET /web`**: Landing page com telemetria ao vivo, catálogo interativo e formulário de upload.
 - **`GET /web/profile/:id`**: Página de perfil com lista de arquivos do usuário e formulário de upload.
 - **`GET /web/download/:fileId`**: Download direto do arquivo salvo.
+- **`GET /web/html`**: Demonstração de resposta HTML pura direta sem template.
 
 ### 2. REST API (JSON)
 - **`GET /health`**: Verificação de integridade e injeção de `@Value`.
@@ -98,13 +102,23 @@ Abra seu navegador em:
        -d '{"name":"Novo Usuario","username":"novouser"}'
   ```
 
-### 3. Server-Sent Events (SSE)
+### 3. Novo no nano-spring 1.3.0: Banco de Dados & Migrações
+- **`GET /api/database/migrations`**: Histórico das migrações SQL aplicadas pelo `SqliteMigrator`.
+  ```bash
+  curl -i http://localhost:9090/api/database/migrations
+  ```
+- **`GET /api/database/events`**: Registros recuperados via `@Repository` (`ServerEventRepository`).
+  ```bash
+  curl -i http://localhost:9090/api/database/events
+  ```
+
+### 4. Server-Sent Events (SSE)
 - **`GET /api/events`**: Stream em tempo real de telemetria do servidor.
   ```bash
   curl -N http://localhost:9090/api/events
   ```
 
-### 4. Upload de Arquivo Multipart
+### 5. Upload de Arquivo Multipart
 - **`POST /web/upload`**:
   ```bash
   curl -i -F "userId=1" -F "documento=@meu_arquivo.pdf" http://localhost:9090/web/upload
@@ -126,18 +140,20 @@ Abra seu navegador em:
 │  │  - Roteamento e Injeção (@RestController, @Autowired)     │  │
 │  │  - JMustache Template Engine (assets/templates/)          │  │
 │  │  - SseEmitter (Streaming de Eventos / Telemetria)         │  │
+│  │  - SqliteMigrator (assets/db/migration/V*__*.sql)         │  │
 │  │  - Handler de Arquivos Estáticos (assets/static/)         │  │
-│  └────────────────┬───────────────────────────┬──────────────┘  │
-│                   │                           │                 │
-│         ┌─────────▼────────┐        ┌─────────▼────────┐        │
-│         │   UserService    │        │   FileService    │        │
-│         └─────────┬────────┘        └─────────┬────────┘        │
-│                   │                           │                 │
-│         ┌─────────▼───────────────────────────▼────────┐        │
-│         │         AppDatabase (Android Room v3)        │        │
-│         │           - UserDao   - UserFileDao          │        │
-│         └──────────────────────────────────────────────┘        │
-│  Notificação Foreground: Uptime, IP, Requiçoes em tempo real    │
+│  └───────┬────────────────────┬────────────────────┬─────────┘  │
+│          │                    │                    │            │
+│    ┌─────▼──────┐       ┌─────▼──────┐       ┌─────▼──────┐     │
+│    │UserService │       │FileService │       │EventRepo   │     │
+│    │ (@Service) │       │ (@Service) │       │(@Repository│     │
+│    └─────┬──────┘       └─────┬──────┘       └─────┬──────┘     │
+│          │                    │                    │            │
+│    ┌─────▼────────────────────▼─────┐        ┌─────▼──────────┐ │
+│    │  AppDatabase (Room SQLite v3)  │        │Native SQLite DB│ │
+│    │    - UserDao    - UserFileDao  │        │Server.getDb()  │ │
+│    └────────────────────────────────┘        └────────────────┘ │
+│  Notificação Foreground: Uptime, IP, Requisições em tempo real  │
 └─────────────────────────────────────────────────────────────────┘
 ```
 

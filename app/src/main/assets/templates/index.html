@@ -111,6 +111,18 @@
                             <td>Resposta HTML direta sem template (MimeType <code>text/html</code>)</td>
                             <td><a href="/web/html" target="_blank" class="btn-action">Testar</a></td>
                         </tr>
+                        <tr>
+                            <td><span class="method-tag method-get">GET</span></td>
+                            <td><a href="/api/database/migrations" target="_blank" class="code-link">/api/database/migrations</a></td>
+                            <td>Histórico de migrações SQLite nativas (SqliteMigrator nano-spring 1.3.0)</td>
+                            <td><a href="/api/database/migrations" target="_blank" class="btn-action">Testar</a></td>
+                        </tr>
+                        <tr>
+                            <td><span class="method-tag method-get">GET</span></td>
+                            <td><a href="/api/database/events" target="_blank" class="code-link">/api/database/events</a></td>
+                            <td>Consulta gerenciada via <code>@Repository</code> e <code>Server.getDatabase()</code></td>
+                            <td><a href="/api/database/events" target="_blank" class="btn-action">Testar</a></td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
@@ -169,7 +181,7 @@
         <!-- FOOTER -->
         <footer class="footer">
             <p>
-                <strong>AndroidServer</strong> • Powered by <a href="https://github.com/matheuscruzsouza/nano-spring" target="_blank" style="color:var(--accent-blue); text-decoration:none;">nano-spring 1.2.0</a>
+                <strong>AndroidServer</strong> • Powered by <a href="https://github.com/matheuscruzsouza/nano-spring" target="_blank" style="color:var(--accent-blue); text-decoration:none;">nano-spring 1.3.0</a>
             </p>
             <p style="font-size:12px; margin-top:4px;">
                 Endereço IP Local: <code>{{ipAddress}}:{{port}}</code> • Android API Level {{sdkInt}}

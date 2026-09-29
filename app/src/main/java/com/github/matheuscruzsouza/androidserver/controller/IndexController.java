@@ -6,6 +6,7 @@ import com.github.matheuscruzsouza.androidserver.NetworkUtils;
 import com.github.matheuscruzsouza.androidserver.log.ServerLogBus;
 import com.github.matheuscruzsouza.androidserver.model.User;
 import com.github.matheuscruzsouza.androidserver.model.UserFile;
+import com.github.matheuscruzsouza.androidserver.repository.ServerEventRepository;
 import com.github.matheuscruzsouza.androidserver.service.FileService;
 import com.github.matheuscruzsouza.androidserver.service.UserService;
 import com.github.matheuscruzsouza.nanospring.annotation.Autowired;
@@ -28,6 +29,16 @@ public class IndexController {
 
     @Autowired
     private FileService fileService;
+
+    @Autowired
+    private ServerEventRepository eventRepository;
+
+    private ServerEventRepository getEventRepository() {
+        if (eventRepository == null) {
+            eventRepository = new ServerEventRepository();
+        }
+        return eventRepository;
+    }
 
     private UserService getUserService() {
         if (userService == null) {
@@ -85,7 +96,7 @@ public class IndexController {
         return new ModelAndView("index")
                 .addObject("appName", "AndroidServer")
                 .addObject("frameworkName", "nano-spring")
-                .addObject("frameworkVersion", "1.2.0")
+                .addObject("frameworkVersion", "1.3.0")
                 .addObject("deviceModel", Build.MANUFACTURER + " " + Build.MODEL)
                 .addObject("androidVersion", Build.VERSION.RELEASE)
                 .addObject("sdkInt", String.valueOf(Build.VERSION.SDK_INT))
@@ -103,6 +114,16 @@ public class IndexController {
                 .addObject("hasFiles", fileCount > 0)
                 .addObject("users", users)
                 .addObject("files", files);
+    }
+
+    @GetMethod("/api/database/migrations")
+    public List<Map<String, Object>> getMigrations() {
+        return getEventRepository().getMigrationsHistory();
+    }
+
+    @GetMethod("/api/database/events")
+    public List<Map<String, String>> getDatabaseEvents() {
+        return getEventRepository().getEvents();
     }
 
     @GetMethod("/api/events")
