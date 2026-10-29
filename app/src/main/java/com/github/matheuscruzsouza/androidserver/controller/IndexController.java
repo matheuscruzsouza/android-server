@@ -12,6 +12,8 @@ import com.github.matheuscruzsouza.androidserver.service.UserService;
 import com.github.matheuscruzsouza.nanospring.annotation.Autowired;
 import com.github.matheuscruzsouza.nanospring.annotation.GetMethod;
 import com.github.matheuscruzsouza.nanospring.annotation.RestController;
+import com.github.matheuscruzsouza.nanospring.cors.CorsConfiguration;
+import com.github.matheuscruzsouza.nanospring.discovery.NsdServiceManager;
 import com.github.matheuscruzsouza.nanospring.server.Environment;
 import com.github.matheuscruzsouza.nanospring.sse.SseEmitter;
 import com.github.matheuscruzsouza.nanospring.ui.ModelAndView;
@@ -32,6 +34,12 @@ public class IndexController {
 
     @Autowired
     private ServerEventRepository eventRepository;
+
+    @Autowired
+    private NsdServiceManager nsdServiceManager;
+
+    @Autowired
+    private CorsConfiguration corsConfiguration;
 
     private ServerEventRepository getEventRepository() {
         if (eventRepository == null) {
@@ -93,10 +101,23 @@ public class IndexController {
         long usedMemory = totalMemory - freeMemory;
         long maxMemory = rt.maxMemory() / (1024 * 1024);
 
+        boolean nsdRegistered = nsdServiceManager != null && nsdServiceManager.isRegistered();
+        String nsdName = (nsdServiceManager != null && nsdServiceManager.getRegisteredServiceName() != null)
+                ? nsdServiceManager.getRegisteredServiceName()
+                : Environment.getProperty("nano.nsd.name", "AndroidServer");
+        boolean hostResponderRunning = nsdServiceManager != null
+                && nsdServiceManager.getHostResponder() != null
+                && nsdServiceManager.getHostResponder().isRunning();
+        String nsdHostName = (nsdServiceManager != null && nsdServiceManager.getHostResponder() != null)
+                ? nsdServiceManager.getHostResponder().getFullLocalHostname()
+                : (nsdName.toLowerCase() + ".local");
+
+        boolean corsActive = corsConfiguration != null ? corsConfiguration.isEnabled() : Boolean.parseBoolean(Environment.getProperty("nano.cors.enabled", "true"));
+
         return new ModelAndView("index")
                 .addObject("appName", "AndroidServer")
                 .addObject("frameworkName", "nano-spring")
-                .addObject("frameworkVersion", "1.3.0")
+                .addObject("frameworkVersion", "1.6.0")
                 .addObject("deviceModel", Build.MANUFACTURER + " " + Build.MODEL)
                 .addObject("androidVersion", Build.VERSION.RELEASE)
                 .addObject("sdkInt", String.valueOf(Build.VERSION.SDK_INT))
@@ -110,10 +131,62 @@ public class IndexController {
                 .addObject("usedMemory", String.valueOf(usedMemory))
                 .addObject("totalMemory", String.valueOf(totalMemory))
                 .addObject("maxMemory", String.valueOf(maxMemory))
+                .addObject("nsdEnabled", nsdRegistered || hostResponderRunning)
+                .addObject("nsdName", nsdName)
+                .addObject("nsdHostName", nsdHostName)
+                .addObject("hostResponderRunning", hostResponderRunning)
+                .addObject("corsEnabled", corsActive)
                 .addObject("hasUsers", userCount > 0)
                 .addObject("hasFiles", fileCount > 0)
                 .addObject("users", users)
                 .addObject("files", files);
+    }
+
+    @GetMethod("/api/config/cors")
+    public Map<String, Object> getCorsConfig() {
+        Map<String, Object> cors = new HashMap<>();
+        if (corsConfiguration != null) {
+            cors.put("enabled", corsConfiguration.isEnabled());
+            cors.put("allowedOrigins", corsConfiguration.getAllowedOrigins());
+            cors.put("allowedMethods", corsConfiguration.getAllowedMethods());
+            cors.put("allowedHeaders", corsConfiguration.getAllowedHeaders());
+            cors.put("maxAge", corsConfiguration.getMaxAge());
+        } else {
+            cors.put("enabled", Boolean.parseBoolean(Environment.getProperty("nano.cors.enabled", "true")));
+            cors.put("allowedOrigins", Environment.getProperty("nano.cors.allowed-origins", "*"));
+            cors.put("allowedMethods", Environment.getProperty("nano.cors.allowed-methods", "GET,POST,PUT,DELETE,OPTIONS"));
+            cors.put("allowedHeaders", Environment.getProperty("nano.cors.allowed-headers", "Content-Type,Authorization,X-Requested-With,Accept"));
+            cors.put("maxAge", Environment.getProperty("nano.cors.max-age", "86400"));
+        }
+        return cors;
+    }
+
+    @GetMethod("/api/discovery/nsd")
+    public Map<String, Object> getNsdStatus() {
+        Map<String, Object> status = new HashMap<>();
+        boolean registered = nsdServiceManager != null && nsdServiceManager.isRegistered();
+        String serviceName = (nsdServiceManager != null && nsdServiceManager.getRegisteredServiceName() != null)
+                ? nsdServiceManager.getRegisteredServiceName()
+                : Environment.getProperty("nano.nsd.name", "AndroidServer");
+        boolean hostResponderRunning = nsdServiceManager != null
+                && nsdServiceManager.getHostResponder() != null
+                && nsdServiceManager.getHostResponder().isRunning();
+        String localHostname = (nsdServiceManager != null && nsdServiceManager.getHostResponder() != null)
+                ? nsdServiceManager.getHostResponder().getFullLocalHostname()
+                : (serviceName.toLowerCase() + ".local");
+        String port = Environment.getProperty("server.port", "9090");
+
+        status.put("enabled", Boolean.parseBoolean(Environment.getProperty("nano.nsd.enabled", "false")));
+        status.put("serviceName", serviceName);
+        status.put("serviceType", Environment.getProperty("nano.nsd.type", "_http._tcp."));
+        status.put("port", Integer.parseInt(port));
+        status.put("registered", registered);
+        status.put("protocol", "DNS-SD / mDNS (Zeroconf)");
+        status.put("hostResolutionEnabled", Boolean.parseBoolean(Environment.getProperty("nano.nsd.host-resolution", "true")));
+        status.put("hostResponderRunning", hostResponderRunning);
+        status.put("hostname", localHostname);
+        status.put("browserUrl", "http://" + localHostname + ":" + port + "/");
+        return status;
     }
 
     @GetMethod("/api/database/migrations")
