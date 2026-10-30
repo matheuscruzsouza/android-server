@@ -1,103 +1,73 @@
 package com.github.matheuscruzsouza.androidserver;
 
 import android.os.Bundle;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.Spinner;
 import android.widget.TextView;
-import com.github.matheuscruzsouza.nanospring.server.Environment;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import java.io.OutputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
+import com.github.matheuscruzsouza.androidserver.service.IamService;
+import com.github.matheuscruzsouza.nanospring.server.Environment;
+
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import com.google.gson.Gson;
-import com.github.matheuscruzsouza.androidserver.model.User;
 
 public class UserRegistrationActivity extends AppCompatActivity {
 
-    private ExecutorService executor = Executors.newSingleThreadExecutor();
-    private Gson gson = new Gson();
+    private final ExecutorService executor = Executors.newSingleThreadExecutor();
+    private IamService iamService;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_user_registration);
 
-        EditText etUsername = findViewById(R.id.etUsername);
+        Environment.init(this);
+        iamService = new IamService(this);
+
         EditText etName = findViewById(R.id.etName);
+        EditText etAccessKey = findViewById(R.id.etAccessKey);
+        EditText etSecretKey = findViewById(R.id.etSecretKey);
+        Spinner spPolicy = findViewById(R.id.spPolicy);
         Button btnSubmit = findViewById(R.id.btnSubmit);
         Button btnBack = findViewById(R.id.btnBack);
-        Environment.init(this);
         TextView tvResult = findViewById(R.id.tvResult);
+
+        String[] policies = new String[]{"ReadOnly", "WriteOnly", "Admin"};
+        ArrayAdapter<String> spinnerAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, policies);
+        spPolicy.setAdapter(spinnerAdapter);
 
         if (btnBack != null) {
             btnBack.setOnClickListener(v -> finish());
         }
 
         btnSubmit.setOnClickListener(v -> {
-            String username = etUsername.getText().toString();
-            String name = etName.getText().toString();
+            String name = etName.getText().toString().trim();
+            String accessKey = etAccessKey.getText().toString().trim();
+            String secretKey = etSecretKey.getText().toString().trim();
+            String policy = spPolicy.getSelectedItem() != null ? spPolicy.getSelectedItem().toString() : "ReadOnly";
 
-            if (username.isEmpty() || name.isEmpty()) {
+            if (name.isEmpty() || accessKey.isEmpty() || secretKey.isEmpty()) {
                 Toast.makeText(this, "Preencha todos os campos", Toast.LENGTH_SHORT).show();
                 return;
             }
 
-            User user = new User(username, name);
-            String jsonPayload = gson.toJson(user);
-
             executor.execute(() -> {
-                try {
-                    String ip = NetworkUtils.getLocalIpAddress();
-                    String port = Environment.getProperty("server.port", "8080");
-                    URL url = new URL("http://" + ip + ":" + port + "/api/users");
-                    HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-                    conn.setRequestMethod("POST");
-                    conn.setRequestProperty("Content-Type", "application/json");
-                    conn.setDoOutput(true);
-
-                    try (OutputStream os = conn.getOutputStream()) {
-                        byte[] input = jsonPayload.getBytes("utf-8");
-                        os.write(input, 0, input.length);
+                boolean success = iamService.createUser(name, accessKey, secretKey, policy);
+                runOnUiThread(() -> {
+                    if (success) {
+                        tvResult.setText("Sucesso! Credencial IAM criada com sucesso:\nAccessKey: " + accessKey + " (" + policy + ")");
+                        etName.setText("");
+                        etAccessKey.setText("");
+                        etSecretKey.setText("");
+                    } else {
+                        tvResult.setText("Erro ao salvar credencial. Verifique se o AccessKey já existe.");
                     }
-
-                    int code = conn.getResponseCode();
-                    boolean isSuccess = (code >= 200 && code < 300);
-                    
-                    StringBuilder responseStr = new StringBuilder();
-                    java.io.InputStream stream = isSuccess ? conn.getInputStream() : conn.getErrorStream();
-                    if (stream != null) {
-                        try (BufferedReader br = new BufferedReader(
-                                new InputStreamReader(stream, "utf-8"))) {
-                            String responseLine;
-                            while ((responseLine = br.readLine()) != null) {
-                                responseStr.append(responseLine.trim());
-                            }
-                        }
-                    }
-
-                    runOnUiThread(() -> {
-                        if (isSuccess) {
-                            tvResult.setText("Sucesso! Usuário cadastrado:\n" + responseStr.toString());
-                            etUsername.setText("");
-                            etName.setText("");
-                        } else {
-                            tvResult.setText("Erro HTTP " + code + ":\n" + responseStr.toString());
-                        }
-                    });
-
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    runOnUiThread(() -> {
-                        tvResult.setText("Falha na conexão: " + e.getMessage());
-                    });
-                }
+                });
             });
         });
     }

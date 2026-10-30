@@ -3,255 +3,750 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{appName}} • Showcase nano-spring</title>
+    <title>S4 • Simple Shared Storage Service</title>
     <link rel="stylesheet" href="/static/css/style.css">
+    <!-- HTMX Core & SSE Extension com defer para carregamento não-bloqueante -->
+    <script src="/static/js/htmx.min.js" defer></script>
+    <script src="/static/js/htmx-sse.js" defer></script>
 </head>
-<body>
-    <div class="container">
-        <!-- HEADER -->
-        <header class="header">
-            <div class="header-title">
-                <h1>{{appName}} Showcase</h1>
-                <p>Aplicação de Referência do <strong>{{frameworkName}} v{{frameworkVersion}}</strong> rodando nativamente no Android</p>
-            </div>
-            <div class="badges">
-                <span class="badge badge-live">
-                    <span class="badge-pulse"></span>
-                    ONLINE :{{port}}
-                </span>
-                <span class="badge">
-                    📱 {{deviceModel}} (Android {{androidVersion}})
-                </span>
-                <span class="badge" id="sseBadge">
-                    📡 SSE Conectado
-                </span>
-                {{#nsdEnabled}}
-                <span class="badge" style="background: rgba(10, 132, 255, 0.15); color: var(--accent-blue); border: 1px solid rgba(10, 132, 255, 0.3);">
-                    🌐 http://{{nsdHostName}}:{{port}}
-                </span>
-                {{/nsdEnabled}}
-                {{#corsEnabled}}
-                <span class="badge" style="background: rgba(48, 209, 88, 0.15); color: var(--accent-green); border: 1px solid rgba(48, 209, 88, 0.3);">
-                    🛡️ CORS Habilitado
-                </span>
-                {{/corsEnabled}}
-            </div>
-        </header>
-
-        <!-- TELEMETRY METRICS -->
-        <section class="metrics-grid">
-            <div class="metric-card">
-                <span class="metric-label">Tempo Ativo (Uptime)</span>
-                <span class="metric-value" id="valUptime">{{uptime}}</span>
-                <span class="metric-sub">Servidor em execução</span>
-            </div>
-            <div class="metric-card">
-                <span class="metric-label">Requisições HTTP</span>
-                <span class="metric-value" id="valRequests" style="color: var(--accent-blue);">{{requestCount}}</span>
-                <span class="metric-sub">Atendidas pelo ServerLogBus</span>
-            </div>
-            <div class="metric-card">
-                <span class="metric-label">Memória Heap Dalvik</span>
-                <span class="metric-value" id="valMemory" style="color: var(--accent-orange);">{{usedMemory}} MB</span>
-                <span class="metric-sub">de {{totalMemory}} MB alocados</span>
-            </div>
-            <div class="metric-card">
-                <span class="metric-label">Usuários Cadastrados</span>
-                <span class="metric-value" style="color: var(--accent-green);">{{userCount}}</span>
-                <span class="metric-sub">Armazenamento SQLite Room</span>
-            </div>
-        </section>
-
-        <!-- REST API CATALOGUE -->
-        <section class="section-card">
-            <div class="section-header">
-                <h2>Catálogo de Endpoints REST API</h2>
-                <span style="font-size:12px; color:var(--text-muted);">JSON automatizado por Jackson / Gson</span>
-            </div>
-            <div style="overflow-x:auto;">
-                <table class="api-table">
-                    <thead>
-                        <tr>
-                            <th>Método</th>
-                            <th>Endpoint</th>
-                            <th>Descrição / Funcionalidade</th>
-                            <th>Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td><span class="method-tag method-get">GET</span></td>
-                            <td><a href="/health" target="_blank" class="code-link">/health</a></td>
-                            <td>Verifica integridade e injeção <code>@Value("${app.welcome.message}")</code></td>
-                            <td><a href="/health" target="_blank" class="btn-action">Testar</a></td>
-                        </tr>
-                        <tr>
-                            <td><span class="method-tag method-get">GET</span></td>
-                            <td><a href="/api/users" target="_blank" class="code-link">/api/users</a></td>
-                            <td>Retorna lista completa de usuários do Room Database</td>
-                            <td><a href="/api/users" target="_blank" class="btn-action">Testar</a></td>
-                        </tr>
-                        <tr>
-                            <td><span class="method-tag method-get">GET</span></td>
-                            <td><a href="/api/users/1" target="_blank" class="code-link">/api/users/:id</a></td>
-                            <td>Busca usuário por ID com <code>@PathVariable("id")</code></td>
-                            <td><a href="/api/users/1" target="_blank" class="btn-action">Testar</a></td>
-                        </tr>
-                        <tr>
-                            <td><span class="method-tag method-get">GET</span></td>
-                            <td><a href="/api/users/search?q=matheus" target="_blank" class="code-link">/api/users/search?q=...</a></td>
-                            <td>Filtro de busca em memória via <code>@RequestParam("q")</code></td>
-                            <td><a href="/api/users/search?q=matheus" target="_blank" class="btn-action">Testar</a></td>
-                        </tr>
-                        <tr>
-                            <td><span class="method-tag method-post">POST</span></td>
-                            <td><span class="code-link" style="color:var(--text-primary);">/api/users</span></td>
-                            <td>Cria novo usuário via JSON <code>@RequestBody</code></td>
-                            <td><button class="btn-action" onclick="testCreateUser()">Simular POST</button></td>
-                        </tr>
-                        <tr>
-                            <td><span class="method-tag method-get">GET</span></td>
-                            <td><a href="/api/events" target="_blank" class="code-link">/api/events</a></td>
-                            <td>Stream contínuo de métricas via <code>SseEmitter</code> (Server-Sent Events)</td>
-                            <td><a href="/api/events" target="_blank" class="btn-action">Ver Stream</a></td>
-                        </tr>
-                        <tr>
-                            <td><span class="method-tag method-get">GET</span></td>
-                            <td><a href="/web/html" target="_blank" class="code-link">/web/html</a></td>
-                            <td>Resposta HTML direta sem template (MimeType <code>text/html</code>)</td>
-                            <td><a href="/web/html" target="_blank" class="btn-action">Testar</a></td>
-                        </tr>
-                        <tr>
-                            <td><span class="method-tag method-get">GET</span></td>
-                            <td><a href="/api/database/migrations" target="_blank" class="code-link">/api/database/migrations</a></td>
-                            <td>Histórico de migrações SQLite nativas (SqliteMigrator nano-spring 1.3.0)</td>
-                            <td><a href="/api/database/migrations" target="_blank" class="btn-action">Testar</a></td>
-                        </tr>
-                        <tr>
-                            <td><span class="method-tag method-get">GET</span></td>
-                            <td><a href="/api/database/events" target="_blank" class="code-link">/api/database/events</a></td>
-                            <td>Consulta gerenciada via <code>@Repository</code> e <code>Server.getDatabase()</code></td>
-                            <td><a href="/api/database/events" target="_blank" class="btn-action">Testar</a></td>
-                        </tr>
-                        <tr>
-                            <td><span class="method-tag method-get">GET</span></td>
-                            <td><a href="/api/discovery/nsd" target="_blank" class="code-link">/api/discovery/nsd</a></td>
-                            <td>Status mDNS DNS-SD & Resolução de Host A (nano-spring 1.5.0+)</td>
-                            <td><a href="/api/discovery/nsd" target="_blank" class="btn-action">Testar</a></td>
-                        </tr>
-                        <tr>
-                            <td><span class="method-tag method-get">GET</span></td>
-                            <td><a href="/api/config/cors" target="_blank" class="code-link">/api/config/cors</a></td>
-                            <td>Configurações de CORS ativas (CorsConfiguration nano-spring 1.6.0)</td>
-                            <td><a href="/api/config/cors" target="_blank" class="btn-action">Testar</a></td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </section>
-
-        <!-- SERVER-SIDE RENDERING (SSR MUSTACHE) & PROFILES -->
-        <section class="section-card">
-            <div class="section-header">
-                <h2>Renderização Server-Side (JMustache SSR)</h2>
-                <span style="font-size:12px; color:var(--text-muted);">Páginas dinâmicas renderizadas no smartphone</span>
-            </div>
-            <p style="font-size:14px; color:var(--text-muted); margin-top:0;">
-                O nano-spring processa templates HTML Mustache diretamente a partir de <code>assets/templates/</code> e injeta entidades do Room Database via <code>ModelAndView</code>:
-            </p>
-            <div class="users-list">
-                {{#users}}
-                <div class="user-item">
-                    <div class="user-info">
-                        <strong>#{{id}} {{name}}</strong>
-                        <span>@{{username}}</span>
-                    </div>
-                    <a href="/web/profile/{{id}}" class="btn-action btn-primary">Ver Perfil</a>
+<body hx-ext="sse" sse-connect="/api/events">
+    {{^isAuthenticated}}
+    <!-- TELA DE LOGIN DEDICADA & PROFISSIONAL (NÃO AUTENTICADO) -->
+    <div class="auth-screen-wrapper">
+        <div class="auth-card">
+            <div class="auth-header">
+                <div class="auth-logo-badge">
+                    <svg viewBox="0 0 108 108" width="44" height="44" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M54 26L76 38L54 50L32 38Z" fill="#3B82F6"/>
+                        <path d="M32 38L54 50V78L32 66Z" fill="#2563EB"/>
+                        <path d="M54 50L76 38V66L54 78Z" fill="#1D4ED8"/>
+                        <path d="M54 26L76 38V66L54 78L32 66V38Z" stroke="#60A5FA" stroke-width="2" stroke-linejoin="round"/>
+                        <path d="M54 50V78M54 50L76 38M54 50L32 38" stroke="#60A5FA" stroke-width="2"/>
+                        <path d="M48 46L40 49C39 53 47 54 46 58L38 61" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M66 46L60 54H70M67 49V61" stroke="#93C5FD" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M24 52C22 66 40 78 64 74C78 71 86 61 84 52" stroke="#10B981" stroke-width="2.5" stroke-linecap="round"/>
+                        <circle cx="84" cy="52" r="3" fill="#10B981"/>
+                    </svg>
                 </div>
-                {{/users}}
+                <h1 class="auth-title">S4 Storage</h1>
+                <p class="auth-subtitle">Simple Shared Storage Service. Autentique-se com sua credencial IAM para acessar a biblioteca de objetos deste dispositivo.</p>
             </div>
-        </section>
 
-        <!-- MULTIPART FILE UPLOAD DEMO -->
-        <section class="section-card">
-            <div class="section-header">
-                <h2>Demonstração de Upload Multipart (@UploadedFile)</h2>
-                <span style="font-size:12px; color:var(--text-muted);">Armazenamento em /sdcard/AndroidServer/</span>
-            </div>
-            <p style="font-size:14px; color:var(--text-muted); margin-top:0;">
-                Envie arquivos diretamente para o sistema de arquivos do Moto G4 Play associando-os a um usuário cadastrado:
-            </p>
-            <form action="/web/upload" method="POST" enctype="multipart/form-data" class="upload-form">
-                <div>
-                    <label style="font-size:12px; color:var(--text-muted); display:block; margin-bottom:4px;">Associar a Usuário:</label>
-                    <select name="userId" required>
-                        {{#users}}
-                        <option value="{{id}}">#{{id}} - {{name}} (@{{username}})</option>
-                        {{/users}}
+            <form id="dedicatedLoginForm" onsubmit="handleDedicatedLogin(event)">
+                <div class="form-group" style="margin-bottom: 14px;">
+                    <label class="auth-label">Método de Autenticação</label>
+                    <select id="authType" class="form-control" onchange="toggleAuthFields()" style="width: 100%;">
+                        <option value="token">Bearer Token (Secret Key)</option>
+                        <option value="basic">Chaves IAM (Access Key & Secret Key)</option>
                     </select>
                 </div>
-                <div style="flex: 1; min-width: 200px;">
-                    <label style="font-size:12px; color:var(--text-muted); display:block; margin-bottom:4px;">Arquivo para Upload:</label>
-                    <input type="file" name="documento" required style="width: 100%;">
-                </div>
-                <div style="align-self: flex-end;">
-                    <button type="submit" class="btn-action btn-primary" style="padding: 10px 18px;">Upload para o Android</button>
-                </div>
-            </form>
-        </section>
 
-        <!-- FOOTER -->
-        <footer class="footer">
-            <p>
-                <strong>AndroidServer</strong> • Powered by <a href="https://github.com/matheuscruzsouza/nano-spring" target="_blank" style="color:var(--accent-blue); text-decoration:none;">nano-spring 1.6.0</a>
-            </p>
-            <p style="font-size:12px; margin-top:4px;">
-                Endereço IP Local: <code>{{ipAddress}}:{{port}}</code> • Android API Level {{sdkInt}}
-            </p>
-        </footer>
+                <div id="tokenGroup" class="form-group" style="margin-bottom: 14px;">
+                    <label class="auth-label">Secret Key / Token</label>
+                    <input type="password" id="authToken" class="form-control" placeholder="Informe sua Secret Key" style="width: 100%;" autocomplete="current-password">
+                </div>
+
+                <div id="basicGroup" style="display: none;">
+                    <div class="form-group" style="margin-bottom: 14px;">
+                        <label class="auth-label">Access Key</label>
+                        <input type="text" id="authAccessKey" class="form-control" placeholder="ex: AKIA_..." style="width: 100%;" autocomplete="username">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 14px;">
+                        <label class="auth-label">Secret Key</label>
+                        <input type="password" id="authSecretKey" class="form-control" placeholder="••••••••••••••••" style="width: 100%;" autocomplete="current-password">
+                    </div>
+                </div>
+
+                <div class="auth-hint-box">
+                    <span>💡 <strong>Dica IAM:</strong> Credencial Master padrão: <code>secret_admin_super_key_2026</code></span>
+                </div>
+
+                <div id="authErrorMessage" class="auth-error-alert" style="display: none;"></div>
+
+                <button type="submit" id="loginSubmitBtn" class="btn-tetrisly btn-primary auth-submit-btn">
+                    Desbloquear Acesso
+                </button>
+            </form>
+
+            <div class="auth-footer">
+                <span>S4 (Simple Shared Storage Service) • S3 Compatible API</span>
+            </div>
+        </div>
+    </div>
+    {{/isAuthenticated}}
+
+    {{#isAuthenticated}}
+    <!-- INTERFACE COMPLETA DO APLICATIVO S4 DESKTOP EXPLORER -->
+    <div class="s4-desktop-window">
+        <!-- 1. LEFT EXPLORER SIDEBAR -->
+        <aside class="s4-sidebar">
+            <div class="s4-sidebar-section">
+                <span class="s4-section-title">FAVORITOS</span>
+                <nav class="s4-nav-list">
+                    <a href="javascript:void(0)" onclick="navigateToPath('', '')" class="s4-nav-item active">
+                        <span class="s4-nav-icon">🏠</span>
+                        <span class="s4-nav-text">Início</span>
+                    </a>
+                    <a href="javascript:void(0)" onclick="navigateToPath('', 'Downloads')" class="s4-nav-item">
+                        <span class="s4-nav-icon">⬇️</span>
+                        <span class="s4-nav-text">Downloads</span>
+                    </a>
+                    <a href="javascript:void(0)" onclick="navigateToPath('', 'Documentos')" class="s4-nav-item">
+                        <span class="s4-nav-icon">📄</span>
+                        <span class="s4-nav-text">Documentos</span>
+                    </a>
+                    <a href="javascript:void(0)" onclick="navigateToPath('', 'Imagens')" class="s4-nav-item">
+                        <span class="s4-nav-icon">🖼️</span>
+                        <span class="s4-nav-text">Imagens</span>
+                    </a>
+                </nav>
+            </div>
+
+            <div class="s4-sidebar-section" style="margin-top: 18px;">
+                <span class="s4-section-title">S3 STORAGE</span>
+                <nav class="s4-nav-list">
+                    {{#buckets}}
+                    <a href="javascript:void(0)" onclick="switchBucket('{{name}}')" class="s4-nav-item">
+                        <span class="s4-nav-icon">🗄️</span>
+                        <span class="s4-nav-text">{{name}}</span>
+                    </a>
+                    {{/buckets}}
+                    {{^buckets}}
+                    <a href="javascript:void(0)" onclick="switchBucket('{{authUsername}}')" class="s4-nav-item">
+                        <span class="s4-nav-icon">🗄️</span>
+                        <span class="s4-nav-text">{{authUsername}}</span>
+                    </a>
+                    {{/buckets}}
+                </nav>
+            </div>
+
+            <div class="s4-sidebar-section" style="margin-top: 18px;">
+                <span class="s4-section-title">SERVIÇOS &amp; API</span>
+                <nav class="s4-nav-list">
+                    <a href="/s3" target="_blank" class="s4-nav-item">
+                        <span class="s4-nav-icon">👁️</span>
+                        <span class="s4-nav-text">S3 Bucket API</span>
+                    </a>
+                    <a href="/party" target="_blank" class="s4-nav-item">
+                        <span class="s4-nav-icon">🔀</span>
+                        <span class="s4-nav-text">Copyparty UI</span>
+                    </a>
+                    <a href="/swagger-ui.html" target="_blank" class="s4-nav-item">
+                        <span class="s4-nav-icon">📑</span>
+                        <span class="s4-nav-text">Swagger UI</span>
+                    </a>
+                </nav>
+            </div>
+
+            <div class="s4-sidebar-footer">
+                <div class="s4-user-pill" id="authStatusPill" hx-get="/web/fragments/auth-status" hx-trigger="authChanged from:body">
+                    <div class="s4-user-avatar">{{userInitial}}</div>
+                    <div class="s4-user-info">
+                        <span class="s4-user-name">{{authUsername}}</span>
+                        <span class="s4-user-role">{{authPolicy}}</span>
+                    </div>
+                    <button class="s4-logout-btn" onclick="logout()" title="Encerrar Sessão">✕</button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- 2. MAIN EXPLORER WORKSPACE -->
+        <main class="s4-main-workspace">
+            <!-- Hidden Upload Form for Drag & Drop + Add File -->
+            <form id="uploadForm" hx-post="/web/upload-file" hx-target="#fileCardsGrid" hx-swap="innerHTML" hx-encoding="multipart/form-data" style="display: none;">
+                <input type="hidden" id="uploadBucket" name="bucket" value="">
+                <input type="hidden" id="uploadPath" name="path" value="">
+                <input type="file" id="fileInput" name="file" onchange="submitUpload(this)">
+            </form>
+
+            <!-- Explorer Canvas Grid -->
+            <div class="s4-explorer-canvas" id="dropzone">
+                <div class="file-cards-grid" id="fileCardsGrid" hx-get="/web/fragments/files" hx-trigger="load, authChanged from:body">
+                    <div class="fm-loading-placeholder">Carregando arquivos do servidor...</div>
+                </div>
+            </div>
+
+            <!-- 3. BOTTOM TASKBAR / STATUS BAR ESTILO WINDOWS -->
+            <footer class="s4-statusbar">
+                <div class="s4-status-left">
+                    <span id="statusItemCount">0 item(ns)</span>
+                    <span class="s4-status-sep">|</span>
+                    <span id="statusSelection" class="s4-status-selected">Nenhum item selecionado</span>
+                </div>
+                <div class="s4-status-right">
+                    <span class="s4-status-badge">🌐 http://{{nsdHostName}}:9090</span>
+                    <span id="batteryContainer" sse-swap="battery">
+                        <span class="s4-status-badge" id="batteryBadge">
+                            {{batteryIcon}} {{batteryLevel}}%{{#isCharging}} Chg{{/isCharging}}
+                        </span>
+                    </span>
+                    <div class="theme-selector-wrapper">
+                        <select id="themeSelector" class="form-control s4-theme-select" onchange="onThemeSelectChange(this.value)" title="Selecionar Tema">
+                            <option value="system">💻 Sistema</option>
+                            <option value="light">☀️ Claro</option>
+                            <option value="dark">🌙 Escuro</option>
+                        </select>
+                    </div>
+                </div>
+            </footer>
+        </main>
     </div>
 
-    <!-- SSE CLIENT SCRIPT -->
+    <!-- MODAL DE VISUALIZAÇÃO DE ARQUIVOS -->
+    <div id="filePreviewModal" class="preview-modal" onclick="closePreviewModal(event)">
+        <div class="preview-modal-dialog" onclick="event.stopPropagation()">
+            <div class="preview-modal-header">
+                <div class="preview-header-info">
+                    <span id="previewModalIcon" class="preview-header-icon">📄</span>
+                    <div>
+                        <div id="previewModalTitle" class="preview-header-title">Arquivo</div>
+                        <div id="previewModalMeta" class="preview-header-meta">Tamanho: 0 B</div>
+                    </div>
+                </div>
+                <div class="preview-header-actions">
+                    <a id="previewDownloadBtn" href="#" target="_blank" class="btn-tetrisly btn-outline" style="padding: 6px 12px; font-size: 13px;">📥 Baixar</a>
+                    <button class="preview-close-btn" onclick="closePreviewModal()">&times;</button>
+                </div>
+            </div>
+            <div id="previewModalBody" class="preview-modal-body">
+                <!-- Conteúdo carregado dinamicamente -->
+            </div>
+        </div>
+    </div>
+
+    <!-- WINDOWS STYLE CONTEXT MENU -->
+    <div id="winContextMenu" class="win-context-menu" style="display: none;">
+        <div class="win-menu-item" id="ctxOpenItem" onclick="ctxOpen()">
+            <span class="win-menu-icon">📂</span>
+            <span class="win-menu-label">Abrir</span>
+        </div>
+        <div class="win-menu-item" id="ctxDownloadItem" onclick="ctxDownload()">
+            <span class="win-menu-icon">📥</span>
+            <span class="win-menu-label">Baixar</span>
+        </div>
+        <div class="win-menu-separator"></div>
+        <div class="win-menu-item win-menu-danger" id="ctxDeleteItem" onclick="ctxDelete()">
+            <span class="win-menu-icon">🗑️</span>
+            <span class="win-menu-label">Excluir</span>
+        </div>
+        <div class="win-menu-separator" id="ctxFolderSep" style="display: none;"></div>
+        <div class="win-menu-item" id="ctxNewFolderItem" onclick="ctxNewFolder()" style="display: none;">
+            <span class="win-menu-icon">📁</span>
+            <span class="win-menu-label">Nova pasta</span>
+        </div>
+    </div>
+    {{/isAuthenticated}}
+
+    <!-- CLIENT LOGIC -->
     <script>
-        // Real-time telemetry via SseEmitter (/api/events)
-        if (window.EventSource) {
-            const evtSource = new EventSource("/api/events");
-            evtSource.addEventListener("metrics", function(event) {
-                try {
-                    const data = JSON.parse(event.data);
-                    if (data.uptime) document.getElementById("valUptime").innerText = data.uptime;
-                    if (data.requests !== undefined) document.getElementById("valRequests").innerText = data.requests;
-                    if (data.usedMemoryMb !== undefined) document.getElementById("valMemory").innerText = data.usedMemoryMb + " MB";
-                } catch(e) {}
-            });
-            evtSource.onerror = function() {
-                // If stream finishes, reconnect gracefully after delay
-                setTimeout(() => {
-                    new EventSource("/api/events");
-                }, 5000);
+        // Gerenciamento de Tema (Sistema / Claro / Escuro) persistente via localStorage
+        const THEME_STORAGE_KEY = 's4_theme_preference';
+
+        function initTheme() {
+            const savedSetting = localStorage.getItem(THEME_STORAGE_KEY) || 'system';
+            applyThemeSetting(savedSetting);
+
+            // Escutar alterações de preferência de sistema do SO dinamicamente
+            const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+            if (mediaQuery.addEventListener) {
+                mediaQuery.addEventListener('change', () => {
+                    const currentSetting = localStorage.getItem(THEME_STORAGE_KEY) || 'system';
+                    if (currentSetting === 'system') {
+                        applyThemeSetting('system');
+                    }
+                });
+            }
+        }
+
+        function onThemeSelectChange(value) {
+            localStorage.setItem(THEME_STORAGE_KEY, value);
+            applyThemeSetting(value);
+        }
+
+        function applyThemeSetting(setting) {
+            let effectiveTheme = setting;
+            if (setting === 'system') {
+                const systemPrefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+                effectiveTheme = systemPrefersDark ? 'dark' : 'light';
+            }
+
+            if (effectiveTheme === 'dark') {
+                document.body.setAttribute('data-theme', 'dark');
+            } else {
+                document.body.removeAttribute('data-theme');
+            }
+
+            const selectEl = document.getElementById('themeSelector');
+            if (selectEl) {
+                selectEl.value = setting;
+            }
+        }
+
+        // Inicializa o tema logo no carregamento
+        initTheme();
+
+        // Automatic Auth injection for HTMX
+        document.body.addEventListener('htmx:configRequest', function(evt) {
+            const authHeader = localStorage.getItem('android_server_auth');
+            if (authHeader) {
+                evt.detail.headers['Authorization'] = authHeader;
+            }
+        });
+
+        // Drag & drop support
+        const dropzone = document.getElementById('dropzone');
+        const fileInput = document.getElementById('fileInput');
+        if (dropzone) {
+            dropzone.onclick = () => fileInput.click();
+            dropzone.ondragover = (e) => { e.preventDefault(); dropzone.classList.add('hover'); };
+            dropzone.ondragleave = () => dropzone.classList.remove('hover');
+            dropzone.ondrop = (e) => {
+                e.preventDefault();
+                dropzone.classList.remove('hover');
+                if (e.dataTransfer.files.length > 0) {
+                    fileInput.files = e.dataTransfer.files;
+                    submitUpload(fileInput);
+                }
             };
         }
 
-        // Test POST API helper
-        function testCreateUser() {
-            const randomId = Math.floor(Math.random() * 900) + 100;
-            const payload = {
-                name: "Usuário Teste " + randomId,
-                username: "teste_" + randomId
-            };
-            fetch("/api/users", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload)
-            })
-            .then(res => res.json())
-            .then(user => {
-                alert("Usuário criado com sucesso via REST API!\nID: #" + user.id + "\nNome: " + user.name + "\nUsername: @" + user.username);
-                window.location.reload();
-            })
-            .catch(err => {
-                alert("Erro ao criar usuário: " + err);
+        function submitUpload(input) {
+            if (!input.files || input.files.length === 0) return;
+            htmx.trigger('#uploadForm', 'submit');
+        }
+
+        // Search in items
+        function filterFilesLocal(query) {
+            const term = (query || '').toLowerCase().trim();
+            const items = document.querySelectorAll('.win-item');
+            items.forEach(c => {
+                const title = c.querySelector('.win-item-name')?.innerText?.toLowerCase() || '';
+                if (!term || title.includes(term)) {
+                    c.style.display = 'flex';
+                } else {
+                    c.style.display = 'none';
+                }
             });
+        }
+
+        let currentActiveBucket = '';
+        let currentActivePath = '';
+
+        function navigateToPath(bucketName, path) {
+            currentActiveBucket = bucketName || '';
+            currentActivePath = path || '';
+
+            const bucketInput = document.getElementById('uploadBucket');
+            if (bucketInput) bucketInput.value = currentActiveBucket;
+
+            const pathInput = document.getElementById('uploadPath');
+            if (pathInput) pathInput.value = currentActivePath;
+
+            const titleEl = document.getElementById('bucketViewTitle');
+            if (titleEl) {
+                if (!currentActivePath) {
+                    titleEl.textContent = currentActiveBucket || 'bucket';
+                } else {
+                    titleEl.textContent = (currentActiveBucket ? currentActiveBucket + ' / ' : '') + currentActivePath;
+                }
+            }
+
+            let url = '/web/fragments/files?bucket=' + encodeURIComponent(currentActiveBucket);
+            if (currentActivePath) {
+                url += '&path=' + encodeURIComponent(currentActivePath);
+            }
+            htmx.ajax('GET', url, '#fileCardsGrid');
+        }
+
+        function switchBucket(b) {
+            currentActiveBucket = b;
+            currentActivePath = '';
+            navigateToPath(b, '');
+        }
+
+        // Atualização dinâmica da status bar após carregar ou clicar em itens
+        document.body.addEventListener('htmx:afterSwap', function(evt) {
+            if (evt.detail.target && evt.detail.target.id === 'fileCardsGrid') {
+                updateStatusBar();
+                setupItemClickSelection();
+            }
+        });
+
+        function setupItemClickSelection() {
+            const items = document.querySelectorAll('.win-item');
+            items.forEach(item => {
+                item.addEventListener('click', function(e) {
+                    items.forEach(el => el.classList.remove('win-selected'));
+                    item.classList.add('win-selected');
+                    const name = item.getAttribute('data-name') || item.querySelector('.win-item-name')?.innerText || 'Item';
+                    const size = item.getAttribute('data-size') || '';
+                    const statusSel = document.getElementById('statusSelection');
+                    if (statusSel) {
+                        statusSel.textContent = '1 selecionado: ' + name + (size ? ' (' + size + ')' : '');
+                    }
+                });
+            });
+        }
+
+        function updateStatusBar() {
+            const items = document.querySelectorAll('.win-item');
+            const countEl = document.getElementById('statusItemCount');
+            if (countEl) {
+                countEl.textContent = items.length + ' item(ns)';
+            }
+            const statusSel = document.getElementById('statusSelection');
+            if (statusSel) {
+                statusSel.textContent = 'Nenhum item selecionado';
+            }
+        }
+
+        function promptNewFolder() {
+            const name = prompt('Digite o nome da nova pasta:');
+            if (name && name.trim()) {
+                const payload = 'name=' + encodeURIComponent(name.trim()) + 
+                                (currentActiveBucket ? '&bucket=' + encodeURIComponent(currentActiveBucket) : '') +
+                                (currentActivePath ? '&path=' + encodeURIComponent(currentActivePath) : '');
+                fetch('/web/create-folder', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'Authorization': localStorage.getItem('android_server_auth') || ''
+                    },
+                    body: payload
+                }).then(() => {
+                    let url = '/web/fragments/files?bucket=' + encodeURIComponent(currentActiveBucket);
+                    if (currentActivePath) url += '&path=' + encodeURIComponent(currentActivePath);
+                    htmx.ajax('GET', url, '#fileCardsGrid');
+                });
+            }
+        }
+
+        // CONTEXT MENU LOGIC (WINDOWS STYLE)
+        let contextTarget = null; // { type, bucket, path, name }
+
+        function handleItemContextMenu(e, type, bucket, path, name) {
+            e.preventDefault();
+            e.stopPropagation();
+            contextTarget = { type, bucket, path, name };
+
+            // Destacar o item clicado com o botão direito
+            document.querySelectorAll('.win-item').forEach(el => el.classList.remove('win-selected'));
+            const itemEl = e.target.closest('.win-item');
+            if (itemEl) itemEl.classList.add('win-selected');
+
+            const menu = document.getElementById('winContextMenu');
+            const openItem = document.getElementById('ctxOpenItem');
+            const downloadItem = document.getElementById('ctxDownloadItem');
+            const folderSep = document.getElementById('ctxFolderSep');
+            const newFolderItem = document.getElementById('ctxNewFolderItem');
+
+            if (!menu) return;
+
+            if (type === 'folder') {
+                openItem.style.display = 'flex';
+                downloadItem.style.display = 'none';
+            } else {
+                openItem.style.display = 'flex';
+                downloadItem.style.display = 'flex';
+            }
+            if (folderSep) folderSep.style.display = 'none';
+            if (newFolderItem) newFolderItem.style.display = 'none';
+
+            positionMenu(menu, e.clientX, e.clientY);
+        }
+
+        function handleGridContextMenu(e) {
+            // Se clicou no fundo do explorer
+            if (e.target.closest('.win-item')) return;
+            e.preventDefault();
+            contextTarget = { type: 'background', bucket: currentActiveBucket, path: currentActivePath };
+
+            const menu = document.getElementById('winContextMenu');
+            const openItem = document.getElementById('ctxOpenItem');
+            const downloadItem = document.getElementById('ctxDownloadItem');
+            const folderSep = document.getElementById('ctxFolderSep');
+            const newFolderItem = document.getElementById('ctxNewFolderItem');
+
+            if (!menu) return;
+            openItem.style.display = 'none';
+            downloadItem.style.display = 'none';
+            if (folderSep) folderSep.style.display = 'block';
+            if (newFolderItem) newFolderItem.style.display = 'flex';
+
+            positionMenu(menu, e.clientX, e.clientY);
+        }
+
+        function positionMenu(menu, x, y) {
+            menu.style.display = 'block';
+            const rect = menu.getBoundingClientRect();
+            let posX = x;
+            let posY = y;
+            if (posX + rect.width > window.innerWidth) {
+                posX = window.innerWidth - rect.width - 8;
+            }
+            if (posY + rect.height > window.innerHeight) {
+                posY = window.innerHeight - rect.height - 8;
+            }
+            menu.style.left = posX + 'px';
+            menu.style.top = posY + 'px';
+        }
+
+        function closeContextMenu() {
+            const menu = document.getElementById('winContextMenu');
+            if (menu) menu.style.display = 'none';
+            document.querySelectorAll('.win-item').forEach(el => el.classList.remove('win-selected'));
+        }
+
+        document.addEventListener('click', closeContextMenu);
+        document.addEventListener('contextmenu', function(e) {
+            if (!e.target.closest('.win-item') && !e.target.closest('.win-explorer-grid')) {
+                closeContextMenu();
+            }
+        });
+
+        function ctxOpen() {
+            closeContextMenu();
+            if (!contextTarget) return;
+            if (contextTarget.type === 'folder') {
+                navigateToPath(contextTarget.bucket, contextTarget.path);
+            } else if (contextTarget.type === 'file') {
+                openPreviewModal(contextTarget.bucket, contextTarget.path, '');
+            }
+        }
+
+        function ctxDownload() {
+            closeContextMenu();
+            if (!contextTarget || contextTarget.type !== 'file') return;
+            const encodedBucket = encodeURIComponent(contextTarget.bucket);
+            const encodedKey = encodeURIComponent(contextTarget.path);
+            const lastSlash = contextTarget.path.lastIndexOf('/');
+            const filenameOnly = lastSlash >= 0 ? contextTarget.path.substring(lastSlash + 1) : contextTarget.path;
+            const downloadUrl = '/web/download/' + encodedBucket + '/' + encodeURIComponent(filenameOnly) + '?key=' + encodedKey;
+            window.open(downloadUrl, '_blank');
+        }
+
+        function ctxDelete() {
+            closeContextMenu();
+            if (!contextTarget) return;
+            const isFolder = contextTarget.type === 'folder';
+            const label = isFolder ? ('a pasta "' + contextTarget.name + '" e todo o seu conteúdo') : ('o arquivo "' + contextTarget.name + '"');
+            if (!confirm('Deseja realmente excluir ' + label + '?')) return;
+
+            const payload = 'bucket=' + encodeURIComponent(contextTarget.bucket) + 
+                            '&path=' + encodeURIComponent(contextTarget.path);
+
+            fetch('/web/delete-item', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'Authorization': localStorage.getItem('android_server_auth') || ''
+                },
+                body: payload
+            }).then(() => {
+                let url = '/web/fragments/files?bucket=' + encodeURIComponent(currentActiveBucket);
+                if (currentActivePath) url += '&path=' + encodeURIComponent(currentActivePath);
+                htmx.ajax('GET', url, '#fileCardsGrid');
+            });
+        }
+
+        function ctxNewFolder() {
+            closeContextMenu();
+            promptNewFolder();
+        }
+
+        function switchMainTab(tab, btn) {
+            document.querySelectorAll('.tab-link').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        }
+
+        // Desconectar SSE do HTMX ao fechar ou recarregar página para liberar sockets imediatamente
+        window.addEventListener('beforeunload', function() {
+            if (window.htmx) {
+                const sseSource = htmx.find('body');
+                if (sseSource && sseSource._sseEventSource) {
+                    try { sseSource._sseEventSource.close(); } catch(e) {}
+                }
+            }
+        });
+
+        // Auth actions
+        function toggleAuthFields() {
+            const type = document.getElementById('authType').value;
+            const tokenGroup = document.getElementById('tokenGroup');
+            const basicGroup = document.getElementById('basicGroup');
+            if (tokenGroup) tokenGroup.style.display = type === 'token' ? 'block' : 'none';
+            if (basicGroup) basicGroup.style.display = type === 'basic' ? 'block' : 'none';
+        }
+
+        async function handleDedicatedLogin(e) {
+            e.preventDefault();
+            const errEl = document.getElementById('authErrorMessage');
+            const btn = document.getElementById('loginSubmitBtn');
+            if (errEl) errEl.style.display = 'none';
+
+            const type = document.getElementById('authType').value;
+            let headerVal = '';
+            if (type === 'token') {
+                const token = document.getElementById('authToken').value.trim();
+                if (!token) {
+                    showAuthError('Por favor informe a Secret Key.');
+                    return;
+                }
+                headerVal = 'Bearer ' + token;
+            } else {
+                const access = document.getElementById('authAccessKey').value.trim();
+                const secret = document.getElementById('authSecretKey').value.trim();
+                if (!access || !secret) {
+                    showAuthError('Informe Access Key e Secret Key.');
+                    return;
+                }
+                headerVal = 'Basic ' + btoa(access + ':' + secret);
+            }
+
+            if (btn) {
+                btn.disabled = true;
+                btn.innerText = 'Validando credenciais...';
+            }
+
+            try {
+                // Valida credencial contra fragmento de status
+                const res = await fetch('/web/fragments/auth-status', {
+                    headers: { 'Authorization': headerVal }
+                });
+
+                if (res.ok) {
+                    // Armazena no LocalStorage e no Cookie para renderização server-side
+                    localStorage.setItem('android_server_auth', headerVal);
+                    document.cookie = "android_server_auth=" + encodeURIComponent(headerVal) + "; path=/; max-age=2592000; SameSite=Lax";
+                    window.location.reload();
+                } else {
+                    showAuthError('Credencial inválida ou desabilitada. Verifique suas chaves.');
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.innerText = 'Desbloquear Acesso';
+                    }
+                }
+            } catch (err) {
+                showAuthError('Erro de comunicação com o servidor: ' + err.message);
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerText = 'Desbloquear Acesso';
+                }
+            }
+        }
+
+        function showAuthError(msg) {
+            const errEl = document.getElementById('authErrorMessage');
+            if (errEl) {
+                errEl.innerText = msg;
+                errEl.style.display = 'block';
+            } else {
+                alert(msg);
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('android_server_auth');
+            document.cookie = "android_server_auth=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+            window.location.reload();
+        }
+
+        // Visualizador Modal de Arquivos
+        function openPreviewModal(bucket, filename, size) {
+            const modal = document.getElementById('filePreviewModal');
+            const titleEl = document.getElementById('previewModalTitle');
+            const metaEl = document.getElementById('previewModalMeta');
+            const bodyEl = document.getElementById('previewModalBody');
+            const iconEl = document.getElementById('previewModalIcon');
+            const downloadBtn = document.getElementById('previewDownloadBtn');
+
+            if (!modal || !bodyEl) return;
+
+            const encodedBucket = encodeURIComponent(bucket);
+            const encodedFile = encodeURIComponent(filename);
+            const lastSlash = filename.lastIndexOf('/');
+            const filenameOnly = lastSlash >= 0 ? filename.substring(lastSlash + 1) : filename;
+            const viewUrl = '/web/view/' + encodedBucket + '/' + encodeURIComponent(filenameOnly) + '?key=' + encodedFile;
+            const downloadUrl = '/web/download/' + encodedBucket + '/' + encodeURIComponent(filenameOnly) + '?key=' + encodedFile;
+
+            titleEl.textContent = filenameOnly;
+            metaEl.textContent = 'Bucket: ' + bucket + (size ? ' • Tamanho: ' + size : '');
+            downloadBtn.href = downloadUrl;
+
+            const ext = filename.split('.').pop().toLowerCase();
+            bodyEl.innerHTML = '<div class="preview-loading">Carregando arquivo...</div>';
+            modal.classList.add('active');
+
+            if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(ext)) {
+                iconEl.textContent = '🖼️';
+                const img = new Image();
+                img.onload = () => {
+                    bodyEl.innerHTML = '<div class="preview-image-wrapper"><img src="' + viewUrl + '" alt="' + filename + '" class="preview-image"></div>';
+                };
+                img.onerror = () => {
+                    bodyEl.innerHTML = '<div class="preview-error">Não foi possível carregar a imagem.</div>';
+                };
+                img.src = viewUrl;
+            } else if (['mp4', 'webm'].includes(ext)) {
+                iconEl.textContent = '🎥';
+                bodyEl.innerHTML = '<div class="preview-media-wrapper"><video controls autoplay class="preview-media-player" src="' + viewUrl + '">Seu navegador não suporta reprodução de vídeo.</video></div>';
+            } else if (['mp3', 'wav', 'ogg'].includes(ext)) {
+                iconEl.textContent = '🎵';
+                bodyEl.innerHTML = '<div class="preview-audio-wrapper"><audio controls autoplay class="preview-audio-player" src="' + viewUrl + '">Seu navegador não suporta reprodução de áudio.</audio></div>';
+            } else if (ext === 'pdf') {
+                iconEl.textContent = '📕';
+                bodyEl.innerHTML = '<iframe src="' + viewUrl + '" class="preview-iframe" title="PDF Preview"></iframe>';
+            } else if (['txt', 'log', 'json', 'xml', 'csv', 'md', 'html', 'js', 'css', 'properties', 'sql'].includes(ext)) {
+                iconEl.textContent = '📄';
+                fetch(viewUrl, {
+                    headers: { 'Authorization': localStorage.getItem('android_server_auth') || '' }
+                })
+                .then(r => {
+                    if (!r.ok) throw new Error('Erro ao carregar conteúdo');
+                    return r.text();
+                })
+                .then(text => {
+                    bodyEl.innerHTML = '<pre class="preview-code-block"><code>' + escapeHtml(text) + '</code></pre>';
+                })
+                .catch(err => {
+                    bodyEl.innerHTML = '<div class="preview-error">Falha ao ler o arquivo de texto: ' + escapeHtml(err.message) + '</div>';
+                });
+            } else {
+                iconEl.textContent = '📦';
+                bodyEl.innerHTML = '<div class="preview-unsupported">' +
+                    '<div style="font-size: 48px; margin-bottom: 12px;">📁</div>' +
+                    '<p style="font-size: 15px; font-weight: 600; margin-bottom: 8px;">Pré-visualização não suportada diretamente para arquivos .' + ext.toUpperCase() + '</p>' +
+                    '<p style="color: var(--text-muted); font-size: 13px; margin-bottom: 20px;">Você pode baixar o arquivo e abri-lo no seu dispositivo.</p>' +
+                    '<a href="' + downloadUrl + '" class="btn-tetrisly btn-primary" style="display: inline-block;">Fazer Download (' + size + ')</a>' +
+                    '</div>';
+            }
+        }
+
+        function closePreviewModal(e) {
+            const modal = document.getElementById('filePreviewModal');
+            if (modal) {
+                // Parar qualquer áudio ou vídeo que esteja tocando
+                const mediaEls = modal.querySelectorAll('video, audio');
+                mediaEls.forEach(m => m.pause());
+                const bodyEl = document.getElementById('previewModalBody');
+                if (bodyEl) bodyEl.innerHTML = '';
+                modal.classList.remove('active');
+            }
+        }
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closePreviewModal();
+            }
+        });
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/&/g, '&amp;')
+                      .replace(/</g, '&lt;')
+                      .replace(/>/g, '&gt;')
+                      .replace(/"/g, '&quot;')
+                      .replace(/'/g, '&#039;');
         }
     </script>
 </body>

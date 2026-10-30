@@ -20,8 +20,8 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.github.matheuscruzsouza.androidserver.R;
 import com.github.matheuscruzsouza.androidserver.adapter.FileAdminAdapter;
-import com.github.matheuscruzsouza.androidserver.model.UserFile;
-import com.github.matheuscruzsouza.androidserver.service.FileService;
+import com.github.matheuscruzsouza.androidserver.model.S3ObjectItem;
+import com.github.matheuscruzsouza.androidserver.storage.StorageManager;
 
 import java.io.File;
 import java.util.List;
@@ -35,7 +35,7 @@ public class FilesFragment extends Fragment {
     private TextView tvStorageUsage;
     private TextView tvTotalFilesCount;
     private FileAdminAdapter adapter;
-    private FileService fileService;
+    private StorageManager storageManager;
 
     @Nullable
     @Override
@@ -49,20 +49,18 @@ public class FilesFragment extends Fragment {
         Button btnRefresh = view.findViewById(R.id.btnRefreshFiles);
 
         if (getContext() != null) {
-            fileService = new FileService(getContext());
-        } else {
-            fileService = new FileService();
+            storageManager = new StorageManager(getContext());
         }
 
         rvFiles.setLayoutManager(new LinearLayoutManager(getContext()));
         adapter = new FileAdminAdapter(new FileAdminAdapter.OnFileActionListener() {
             @Override
-            public void onOpenFile(UserFile file) {
+            public void onOpenFile(S3ObjectItem file) {
                 openPhysicalFile(file);
             }
 
             @Override
-            public void onDeleteFile(UserFile file) {
+            public void onDeleteFile(S3ObjectItem file) {
                 confirmDeleteFile(file);
             }
         });
@@ -80,14 +78,13 @@ public class FilesFragment extends Fragment {
     }
 
     private void loadFiles() {
-        if (fileService == null) return;
+        if (storageManager == null) return;
         executor.execute(() -> {
-            List<UserFile> list = fileService.getAllFiles();
+            List<S3ObjectItem> list = storageManager.listAllObjects();
             long totalBytes = 0;
             if (list != null && !list.isEmpty()) {
-                for (UserFile uf : list) {
-                    File f = new File(uf.getFilePath());
-                    if (f.exists()) totalBytes += f.length();
+                for (S3ObjectItem item : list) {
+                    totalBytes += item.getSize();
                 }
             }
             final long finalBytes = totalBytes;
@@ -96,13 +93,13 @@ public class FilesFragment extends Fragment {
                     if (!isAdded()) return;
                     if (list != null && !list.isEmpty()) {
                         tvStorageUsage.setText(formatStorage(finalBytes));
-                        tvTotalFilesCount.setText(list.size() + " arquivos salvos");
+                        tvTotalFilesCount.setText(list.size() + " objetos no S3");
                         tvEmptyFiles.setVisibility(View.GONE);
                         rvFiles.setVisibility(View.VISIBLE);
                         adapter.updateData(list);
                     } else {
                         tvStorageUsage.setText("0.0 MB");
-                        tvTotalFilesCount.setText("0 arquivos salvos");
+                        tvTotalFilesCount.setText("0 objetos no S3");
                         tvEmptyFiles.setVisibility(View.VISIBLE);
                         rvFiles.setVisibility(View.GONE);
                         adapter.updateData(java.util.Collections.emptyList());
@@ -119,40 +116,44 @@ public class FilesFragment extends Fragment {
         return String.format(Locale.getDefault(), "%.1f %sB", bytes / Math.pow(1024, exp), pre);
     }
 
-    private void openPhysicalFile(UserFile userFile) {
-        File f = new File(userFile.getFilePath());
+    private void openPhysicalFile(S3ObjectItem item) {
+        File f = new File(item.getAbsolutePath());
         if (!f.exists()) {
             Toast.makeText(getContext(), "Arquivo não existe no disco", Toast.LENGTH_SHORT).show();
             return;
         }
 
+        if (getContext() == null) return;
+
         try {
+            Uri uri = FileProvider.getUriForFile(
+                    getContext(),
+                    getContext().getPackageName() + ".fileprovider",
+                    f
+            );
+            String mimeType = com.github.matheuscruzsouza.androidserver.storage.FileUtils.getMimeType(f.getName());
             Intent intent = new Intent(Intent.ACTION_VIEW);
-            Uri uri = Uri.fromFile(f);
-            intent.setDataAndType(uri, "*/*");
+            intent.setDataAndType(uri, mimeType);
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            startActivity(Intent.createChooser(intent, "Abrir Arquivo"));
+            startActivity(Intent.createChooser(intent, "Abrir Arquivo S3"));
         } catch (Exception e) {
             Toast.makeText(getContext(), "Não foi possível abrir o arquivo: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
     }
 
-    private void confirmDeleteFile(UserFile userFile) {
+    private void confirmDeleteFile(S3ObjectItem item) {
         if (getContext() == null) return;
         new AlertDialog.Builder(getContext(), android.R.style.Theme_DeviceDefault_Dialog_Alert)
-                .setTitle("Excluir Arquivo")
-                .setMessage("Deseja apagar o arquivo '" + userFile.getFileName() + "' do armazenamento e do banco de dados?")
+                .setTitle("Excluir Objeto S3")
+                .setMessage("Deseja apagar '" + item.getKey() + "' do bucket '" + item.getBucket() + "'?")
                 .setPositiveButton("Excluir", (dialog, which) -> {
                     executor.execute(() -> {
-                        File f = new File(userFile.getFilePath());
-                        if (f.exists()) {
-                            f.delete();
-                        }
-                        fileService.deleteFile(userFile);
+                        File f = new File(item.getAbsolutePath());
+                        boolean deleted = f.exists() && f.delete();
                         if (getActivity() != null) {
                             getActivity().runOnUiThread(() -> {
                                 if (!isAdded()) return;
-                                Toast.makeText(getContext(), "Arquivo removido", Toast.LENGTH_SHORT).show();
+                                Toast.makeText(getContext(), deleted ? "Objeto S3 removido" : "Erro ao remover arquivo", Toast.LENGTH_SHORT).show();
                                 loadFiles();
                             });
                         }

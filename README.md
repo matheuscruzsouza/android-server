@@ -10,6 +10,8 @@ O **AndroidServer** demonstra como transformar um smartphone físico Android (te
 
 | Funcionalidade | Descrição | Componente nano-spring / Android |
 | :--- | :--- | :--- |
+| **Copyparty Web UI & File Server** | Interface web moderna para upload via drag & drop, listagem e download de arquivos | `@RestController("/party")`, `StorageManager` |
+| **S3 Subset API (AWS Compatible)** | Endpoints compatíveis com subconjunto S3 (`ListBuckets`, `ListObjectsV2`, `PutObject`, `GetObject`, `DeleteObject`) | `@RestController("/s3")`, `FileUtils` |
 | **Página Inicial Interativa** | Dashboard dark-mode com métricas e catálogo de APIs em `GET /` e `GET /web` | `@RestController("")`, `ModelAndView("index")` |
 | **CORS Nativo (1.6.0)** | Suporte completo a requisições Cross-Origin e tratamento automático de `OPTIONS` preflight | `CorsConfiguration`, `nano.cors.*` |
 | **Resolução de Host mDNS (1.5.0+)** | Acesso direto pelo navegador via `http://androidserver.local:9090` sem configurar DNS | `MdnsHostResponder`, `nano.nsd.host-resolution=true` |
@@ -75,13 +77,80 @@ Abra seu navegador em:
 
 ## 📡 Catálogo de Endpoints e Exemplos de Uso
 
-### 1. Dashboard e Web (SSR)
+### 1. Dashboard, Web (SSR) e Copyparty File Server
 - **`GET /` ou `GET /web`**: Landing page com telemetria ao vivo, indicador mDNS, catálogo e upload multipart.
+- **`GET /party`**: Interface Web Copyparty dark-mode moderna com suporte a drag & drop, progresso de upload, listagem e download.
+- **`GET /party/api/files`**: Lista arquivos do bucket padrão em JSON.
+- **`POST /party/upload`**: Envio de arquivos via formulário web multipart para o armazenamento local.
+- **`GET /party/download/:filename`**: Download de arquivos salvos.
+- **`DELETE /party/delete/:filename`**: Exclusão de arquivos via interface web.
 - **`GET /web/profile/:id`**: Página de perfil com lista de arquivos do usuário e formulário de upload.
 - **`GET /web/download/:fileId`**: Download direto do arquivo salvo.
 - **`GET /web/html`**: Demonstração de resposta HTML pura direta sem template.
 
-### 2. REST API (JSON)
+### 2. S3 Subset API (Compatível com AWS CLI, Rclone, Cyberduck) & Mini-IAM
+O endpoint `/s3` e o catálogo de credenciais `/api/iam` são protegidos pelo **Mini-IAM Persistente** do AndroidServer com suporte a políticas (`Admin`, `ReadOnly`, `WriteOnly`):
+
+- **Credenciais Padrão Pré-carregadas:**
+  - `Admin`: `AKIA_ADMIN_ANDROID` / `secret_admin_super_key_2026`
+  - `ReadOnly`: `AKIA_READONLY_ANDROID` / `secret_readonly_key_2026`
+  - `WriteOnly`: `AKIA_BACKUP_ANDROID` / `secret_backup_key_2026`
+
+- **Métodos de Autenticação Suportados:**
+  - AWS CLI / S3 SDKs: cabeçalho `Authorization: AWS4-HMAC-SHA256 Credential=<AccessKey>/...` ou `AWS <AccessKey>:<Signature>`.
+  - Bearer Token: `Authorization: Bearer <SecretKey>`.
+  - Basic Auth: `Authorization: Basic <Base64(AccessKey:SecretKey)>`.
+  - Query Parameter: `?access_key=AKIA_...` ou `?token=secret_...`.
+
+- **`GET /s3`**: ListBuckets (retorna XML padrão S3).
+  ```bash
+  curl -i -H "Authorization: Bearer secret_admin_super_key_2026" http://localhost:9090/s3
+  ```
+- **`GET /s3/:bucket`**: ListObjectsV2 (lista objetos do bucket).
+  ```bash
+  curl -i -H "Authorization: Bearer secret_readonly_key_2026" http://localhost:9090/s3/default
+  ```
+- **`PUT /s3/:bucket/:key`**: PutObject (upload de arquivo direto via stream com cálculo de ETag MD5).
+  ```bash
+  curl -i -X PUT -H "Authorization: Bearer secret_backup_key_2026" \
+       --data-binary @"meu_arquivo.txt" http://localhost:9090/s3/default/meu_arquivo.txt
+  ```
+- **`DELETE /s3/:bucket/:key`**: DeleteObject (remoção do arquivo no bucket - restrito a Admin).
+  ```bash
+  curl -i -X DELETE -H "Authorization: Bearer secret_admin_super_key_2026" \
+       http://localhost:9090/s3/default/meu_arquivo.txt
+  ```
+
+- **Gerenciamento de Credenciais IAM (`/api/iam/users`):**
+  ```bash
+  # Listar credenciais
+  curl -i -H "Authorization: Bearer secret_admin_super_key_2026" http://localhost:9090/api/iam/users
+
+  # Criar nova credencial
+  curl -i -X POST http://localhost:9090/api/iam/users \
+       -H "Authorization: Bearer secret_admin_super_key_2026" \
+       -H "Content-Type: application/json" \
+       -d '{"name":"Novo Bot","accessKey":"AKIA_BOT_01","secretKey":"bot_secret_xyz","policy":"ReadOnly"}'
+  ```
+
+#### Uso com o AWS CLI
+Configure o AWS CLI com as credenciais do Mini-IAM (`aws configure`):
+- AWS Access Key ID: `AKIA_ADMIN_ANDROID`
+- AWS Secret Access Key: `secret_admin_super_key_2026`
+- Default region name: `us-east-1`
+
+```bash
+# Listar arquivos no bucket 'default'
+aws --endpoint-url http://localhost:9090/s3 s3 ls s3://default/
+
+# Upload de arquivo
+aws --endpoint-url http://localhost:9090/s3 s3 cp ./video.mp4 s3://default/video.mp4
+
+# Download de arquivo
+aws --endpoint-url http://localhost:9090/s3 s3 cp s3://default/video.mp4 ./video_baixado.mp4
+```
+
+### 3. REST API (JSON)
 - **`GET /health`**: Verificação de integridade e injeção de `@Value`.
   ```bash
   curl -i http://localhost:9090/health

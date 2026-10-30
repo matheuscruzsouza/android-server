@@ -82,8 +82,14 @@ public class MyBackendService extends Service {
         if (server == null) {
             new Thread(() -> {
                 Context context = getApplicationContext();
+                Environment.init(context);
                 server = new Server(context, PORT, "com.github.matheuscruzsouza.androidserver");
                 ServerLogBus.startServerTimer();
+
+                // Pré-aquecimento de baixo consumo na mesma thread de inicialização
+                try {
+                    com.github.matheuscruzsouza.androidserver.model.AppDatabase.getInstance(context).getOpenHelper().getWritableDatabase();
+                } catch (Exception ignored) {}
             }).start();
         }
 

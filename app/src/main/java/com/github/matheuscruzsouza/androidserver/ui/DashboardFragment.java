@@ -1,5 +1,8 @@
 package com.github.matheuscruzsouza.androidserver.ui;
 
+import android.content.ClipData;
+import android.content.ClipboardManager;
+import android.content.Context;
 import android.content.Intent;
 import android.graphics.Color;
 import android.os.Bundle;
@@ -11,6 +14,7 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -33,6 +37,7 @@ public class DashboardFragment extends Fragment {
     private TextView tvUptimeText;
     private Button btnStart;
     private Button btnStop;
+    private TextView tvCopyUrl;
 
     private final Handler timerHandler = new Handler(Looper.getMainLooper());
     private final Runnable timerRunnable = new Runnable() {
@@ -55,9 +60,23 @@ public class DashboardFragment extends Fragment {
         tvUptimeText = view.findViewById(R.id.tvUptimeText);
         btnStart = view.findViewById(R.id.btnStartServer);
         btnStop = view.findViewById(R.id.btnStopServer);
+        tvCopyUrl = view.findViewById(R.id.tvCopyUrl);
 
         btnStart.setOnClickListener(v -> startServer());
         btnStop.setOnClickListener(v -> stopServer());
+
+        if (tvCopyUrl != null) {
+            tvCopyUrl.setOnClickListener(v -> {
+                if (getContext() != null) {
+                    ClipboardManager clipboard = (ClipboardManager) getContext().getSystemService(Context.CLIPBOARD_SERVICE);
+                    ClipData clip = ClipData.newPlainText("Server URL", "http://s4.local:9090");
+                    if (clipboard != null) {
+                        clipboard.setPrimaryClip(clip);
+                        Toast.makeText(getContext(), "URL copiada para a área de transferência!", Toast.LENGTH_SHORT).show();
+                    }
+                }
+            });
+        }
 
         return view;
     }
