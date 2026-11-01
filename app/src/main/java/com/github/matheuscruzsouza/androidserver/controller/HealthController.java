@@ -3,8 +3,10 @@ package com.github.matheuscruzsouza.androidserver.controller;
 import com.github.matheuscruzsouza.nanospring.annotation.GetMethod;
 import com.github.matheuscruzsouza.nanospring.annotation.RestController;
 import com.github.matheuscruzsouza.nanospring.annotation.Value;
+import com.github.matheuscruzsouza.nanospring.openapi.annotation.Hidden;
 import com.github.matheuscruzsouza.androidserver.model.TestObj;
 
+@Hidden
 @RestController("/health")
 public class HealthController {
 

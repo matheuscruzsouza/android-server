@@ -10,8 +10,8 @@ android {
         applicationId = "com.github.matheuscruzsouza.androidserver"
         minSdk = 25
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "2.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -41,8 +41,8 @@ dependencies {
     implementation "androidx.room:room-runtime:$room_version"
     annotationProcessor "androidx.room:room-compiler:$room_version"
 
-    implementation 'com.github.matheuscruzsouza:nano-spring-core:2.2.0'
-    implementation 'com.github.matheuscruzsouza:nano-spring-web:2.2.0'
-    implementation 'com.github.matheuscruzsouza:nano-spring-data:2.2.0'
-    implementation 'com.github.matheuscruzsouza:nano-spring-discovery:2.2.0'
+    implementation 'com.github.matheuscruzsouza:nano-spring-core:2.4.0'
+    implementation 'com.github.matheuscruzsouza:nano-spring-web:2.4.0'
+    implementation 'com.github.matheuscruzsouza:nano-spring-data:2.4.0'
+    implementation 'com.github.matheuscruzsouza:nano-spring-discovery:2.4.0'
 }

@@ -45,38 +45,55 @@ public class UserAdminAdapter extends RecyclerView.Adapter<UserAdminAdapter.User
     @Override
     public void onBindViewHolder(@NonNull UserViewHolder holder, int position) {
         IamUser user = userList.get(position);
-        holder.tvUserName.setText(user.getName());
-        holder.tvUserHandle.setText(user.getAccessKey());
+        String name = user.getName() != null && !user.getName().trim().isEmpty() ? user.getName().trim() : user.getAccessKey();
+        holder.tvUserName.setText(name);
+        holder.tvUserHandle.setText("@" + user.getAccessKey());
 
-        String secret = user.getSecretKey();
-        if (secret != null && secret.length() > 6) {
-            holder.tvUserSecret.setText("Key: " + secret.substring(0, 4) + "•••" + secret.substring(secret.length() - 2));
+        if (holder.tvUserAvatar != null) {
+            String initial = name != null && !name.isEmpty() ? name.substring(0, 1).toUpperCase() : "U";
+            holder.tvUserAvatar.setText(initial);
+        }
+
+        String token = user.getResetToken();
+        if (token != null && !token.isEmpty()) {
+            holder.tvUserSecret.setText("🔑 Token 1º acesso: " + token);
+            holder.tvUserSecret.setTextColor(Color.parseColor("#30D158"));
+        } else if (user.getPasswordHash() != null && !user.getPasswordHash().isEmpty()) {
+            holder.tvUserSecret.setText("✓ Senha definida • Credencial S3 ativa");
+            holder.tvUserSecret.setTextColor(Color.parseColor("#8E8E93"));
         } else {
-            holder.tvUserSecret.setText("Key: ••••••••");
+            holder.tvUserSecret.setText("⚠ Pendente de definição de senha");
+            holder.tvUserSecret.setTextColor(Color.parseColor("#FF9F0A"));
         }
         
         String policy = user.getPolicy() != null ? user.getPolicy() : "ReadOnly";
         if (!user.isEnabled()) {
-            holder.tvUserPolicy.setText("Desativado");
+            holder.tvUserPolicy.setText("INATIVO");
             holder.tvUserPolicy.setTextColor(Color.parseColor("#8E8E93"));
-            holder.itemView.setAlpha(0.6f);
+            holder.itemView.setAlpha(0.65f);
         } else {
             holder.itemView.setAlpha(1.0f);
-            holder.tvUserPolicy.setText(policy);
+            holder.tvUserPolicy.setText(policy.toUpperCase());
             if ("Admin".equalsIgnoreCase(policy)) {
                 holder.tvUserPolicy.setTextColor(Color.parseColor("#FF453A"));
+                if (holder.tvUserAvatar != null) holder.tvUserAvatar.setTextColor(Color.parseColor("#FF453A"));
             } else if ("WriteOnly".equalsIgnoreCase(policy)) {
                 holder.tvUserPolicy.setTextColor(Color.parseColor("#FF9F0A"));
+                if (holder.tvUserAvatar != null) holder.tvUserAvatar.setTextColor(Color.parseColor("#FF9F0A"));
             } else {
                 holder.tvUserPolicy.setTextColor(Color.parseColor("#0A84FF"));
+                if (holder.tvUserAvatar != null) holder.tvUserAvatar.setTextColor(Color.parseColor("#0A84FF"));
             }
         }
 
-        holder.btnConfigUser.setOnClickListener(v -> {
+        View.OnClickListener openDetailsListener = v -> {
             if (listener != null) {
                 listener.onManageUser(user);
             }
-        });
+        };
+
+        holder.itemView.setOnClickListener(openDetailsListener);
+        holder.btnConfigUser.setOnClickListener(openDetailsListener);
 
         holder.btnDelete.setOnClickListener(v -> {
             if (listener != null) {
@@ -91,6 +108,7 @@ public class UserAdminAdapter extends RecyclerView.Adapter<UserAdminAdapter.User
     }
 
     static class UserViewHolder extends RecyclerView.ViewHolder {
+        TextView tvUserAvatar;
         TextView tvUserName;
         TextView tvUserHandle;
         TextView tvUserSecret;
@@ -100,6 +118,7 @@ public class UserAdminAdapter extends RecyclerView.Adapter<UserAdminAdapter.User
 
         public UserViewHolder(@NonNull View itemView) {
             super(itemView);
+            tvUserAvatar = itemView.findViewById(R.id.tvUserAvatar);
             tvUserName = itemView.findViewById(R.id.tvUserName);
             tvUserHandle = itemView.findViewById(R.id.tvUserHandle);
             tvUserSecret = itemView.findViewById(R.id.tvUserSecret);

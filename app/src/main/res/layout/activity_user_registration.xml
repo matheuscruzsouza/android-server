@@ -71,6 +71,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="12dp"
                     android:textColorHint="#8E8E93"
+                    app:boxBackgroundMode="filled"
                     app:boxBackgroundColor="#2C2C2E"
                     app:boxCornerRadiusBottomEnd="10dp"
                     app:boxCornerRadiusBottomStart="10dp"
@@ -84,9 +85,10 @@
                         android:id="@+id/etName"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="Nome de Identificação (ex: App Sync)"
+                        android:hint="Nome Completo (ex: Matheus Silva)"
                         android:inputType="textPersonName"
                         android:textColor="#FFFFFF"
+                        android:textColorHint="#8E8E93"
                         android:textSize="14sp" />
                 </com.google.android.material.textfield.TextInputLayout>
 
@@ -95,6 +97,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="12dp"
                     android:textColorHint="#8E8E93"
+                    app:boxBackgroundMode="filled"
                     app:boxBackgroundColor="#2C2C2E"
                     app:boxCornerRadiusBottomEnd="10dp"
                     app:boxCornerRadiusBottomStart="10dp"
@@ -108,9 +111,10 @@
                         android:id="@+id/etAccessKey"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="Access Key ID (ex: AKIA_CLIENT_01)"
-                        android:inputType="textCapCharacters"
+                        android:hint="Nome de Usuário / Login (ex: matheussilva)"
+                        android:inputType="textEmailAddress"
                         android:textColor="#FFFFFF"
+                        android:textColorHint="#8E8E93"
                         android:textSize="14sp" />
                 </com.google.android.material.textfield.TextInputLayout>
 
@@ -119,6 +123,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="16dp"
                     android:textColorHint="#8E8E93"
+                    app:boxBackgroundMode="filled"
                     app:boxBackgroundColor="#2C2C2E"
                     app:boxCornerRadiusBottomEnd="10dp"
                     app:boxCornerRadiusBottomStart="10dp"
@@ -132,9 +137,10 @@
                         android:id="@+id/etSecretKey"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="Secret Access Key / Token"
+                        android:hint="Secret Key S3 (opcional, gerada automaticamente se vazia)"
                         android:inputType="text"
                         android:textColor="#FFFFFF"
+                        android:textColorHint="#8E8E93"
                         android:textSize="14sp" />
                 </com.google.android.material.textfield.TextInputLayout>
 

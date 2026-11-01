@@ -48,6 +48,33 @@ public class StorageManager {
         return s.isEmpty() ? "default" : s;
     }
 
+    public boolean bucketExists(String bucketName) {
+        if (bucketName == null || bucketName.trim().isEmpty()) return false;
+        String sanitized = sanitizeBucketName(bucketName);
+        File bucket = new File(rootDir, sanitized);
+        return bucket.exists() && bucket.isDirectory();
+    }
+
+    public boolean createBucket(String bucketName) {
+        if (bucketName == null || bucketName.trim().isEmpty()) return false;
+        String sanitized = sanitizeBucketName(bucketName);
+        File bucket = new File(rootDir, sanitized);
+        if (bucket.exists()) {
+            return false;
+        }
+        return bucket.mkdirs();
+    }
+
+    public boolean deleteBucket(String bucketName) {
+        if (!bucketExists(bucketName)) return false;
+        File bucket = new File(rootDir, sanitizeBucketName(bucketName));
+        File[] contents = bucket.listFiles();
+        if (contents != null && contents.length > 0) {
+            return false; // Não vazio
+        }
+        return bucket.delete();
+    }
+
     public File getBucketDir(String bucketName) {
         String sanitized = sanitizeBucketName(bucketName);
         File bucket = new File(rootDir, sanitized);

@@ -51,13 +51,17 @@ public class UserRegistrationActivity extends AppCompatActivity {
             String secretKey = etSecretKey.getText().toString().trim();
             String policy = spPolicy.getSelectedItem() != null ? spPolicy.getSelectedItem().toString() : "ReadOnly";
 
-            if (name.isEmpty() || accessKey.isEmpty() || secretKey.isEmpty()) {
-                Toast.makeText(this, "Preencha todos os campos", Toast.LENGTH_SHORT).show();
+            if (name.isEmpty() || accessKey.isEmpty()) {
+                Toast.makeText(this, "Preencha o nome e o usuário de login", Toast.LENGTH_SHORT).show();
                 return;
             }
 
+            final String finalSecretKey = secretKey.isEmpty()
+                    ? "secret_" + accessKey.toLowerCase().replaceAll("[^a-z0-9]", "") + "_" + System.currentTimeMillis()
+                    : secretKey;
+
             executor.execute(() -> {
-                boolean success = iamService.createUser(name, accessKey, secretKey, policy);
+                boolean success = iamService.createUser(name, accessKey, finalSecretKey, policy);
                 runOnUiThread(() -> {
                     if (success) {
                         tvResult.setText("Sucesso! Credencial IAM criada com sucesso:\nAccessKey: " + accessKey + " (" + policy + ")");

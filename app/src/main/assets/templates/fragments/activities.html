@@ -1,0 +1,14 @@
+<div class='activity-timeline'>
+    {{#events}}
+    <div class='activity-item'>
+        <div class='activity-avatar {{avatarClass}}'>{{badge}}</div>
+        <div class='activity-content'>
+            <div class='activity-author'>{{title}} <span class='activity-time'>{{time}}</span></div>
+            <p class='activity-text'>{{description}}</p>
+        </div>
+    </div>
+    {{/events}}
+    {{#isEmpty}}
+    <div class='empty-activity'><p>Nenhuma atividade registrada ainda.</p></div>
+    {{/isEmpty}}
+</div>

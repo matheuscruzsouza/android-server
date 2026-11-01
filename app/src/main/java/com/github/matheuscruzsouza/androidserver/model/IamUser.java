@@ -9,6 +9,8 @@ public class IamUser {
     private String policy;
     private boolean enabled;
     private String createdAt;
+    private String passwordHash;
+    private String resetToken;
 
     public IamUser() {
     }
@@ -75,5 +77,21 @@ public class IamUser {
 
     public void setCreatedAt(String createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public String getPasswordHash() {
+        return passwordHash;
+    }
+
+    public void setPasswordHash(String passwordHash) {
+        this.passwordHash = passwordHash;
+    }
+
+    public String getResetToken() {
+        return resetToken;
+    }
+
+    public void setResetToken(String resetToken) {
+        this.resetToken = resetToken;
     }
 }

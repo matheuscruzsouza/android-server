@@ -10,6 +10,7 @@ import com.github.matheuscruzsouza.nanospring.annotation.PostMethod;
 import com.github.matheuscruzsouza.nanospring.annotation.RequestParam;
 import com.github.matheuscruzsouza.nanospring.annotation.RestController;
 import com.github.matheuscruzsouza.nanospring.annotation.UploadedFile;
+import com.github.matheuscruzsouza.nanospring.openapi.annotation.Hidden;
 import com.github.matheuscruzsouza.nanospring.ui.ModelAndView;
 import com.github.matheuscruzsouza.androidserver.model.User;
 import com.github.matheuscruzsouza.androidserver.service.UserService;
@@ -20,6 +21,7 @@ import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 
+@Hidden
 @RestController("/web")
 public class WebController {
 
@@ -199,7 +201,7 @@ public class WebController {
         }
         sb.append("<a href='/' class='btn-action'>Página Inicial</a>");
         sb.append("</div></div>");
-        sb.append("<footer class='footer'><p><strong>AndroidServer</strong> • nano-spring 1.6.0</p></footer>");
+        sb.append("<footer class='footer'><p><strong>S4</strong> • nano-spring 2.2.0</p></footer>");
         sb.append("</div></body></html>");
         return sb.toString();
     }

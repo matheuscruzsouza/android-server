@@ -1,0 +1,213 @@
+{{#restricted}}
+<div class="fm-empty-state">
+    <div class="fm-empty-icon">🔒</div>
+    <h3>Acesso Restrito</h3>
+    <p>Conecte-se com sua chave IAM para visualizar e interagir com os arquivos.</p>
+    <button class="btn-tetrisly btn-primary" onclick="logout()">Ir para Login</button>
+</div>
+{{/restricted}}
+
+{{#unavailable}}
+<div class="fm-empty-state">
+    <p>Armazenamento indisponível</p>
+</div>
+{{/unavailable}}
+
+{{^restricted}}
+{{^unavailable}}
+<!-- Windows File Explorer Address & Search Bar -->
+<header class="win-os-toolbar">
+    <!-- Barra de Endereço do Sistema Operacional (Windows Address / Breadcrumb Bar) -->
+    <div class="win-os-address-row">
+        <!-- Controles de Navegação (Voltar / Subir nível) -->
+        <div class="win-nav-buttons">
+            <button class="win-nav-circle-btn {{^hasParent}}disabled{{/hasParent}}" 
+                    {{#hasParent}}onclick="navigateToPath('{{activeBucket}}', '{{parentPath}}')"{{/hasParent}}
+                    title="{{#hasParent}}Subir para o nível superior{{/hasParent}}{{^hasParent}}Diretório raiz{{/hasParent}}">
+                <svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+            </button>
+            <button class="win-nav-circle-btn {{^hasParent}}disabled{{/hasParent}}" 
+                    {{#hasParent}}onclick="navigateToPath('{{activeBucket}}', '{{parentPath}}')"{{/hasParent}}
+                    title="{{#hasParent}}Pasta acima{{/hasParent}}{{^hasParent}}Diretório raiz{{/hasParent}}">
+                <svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="18 15 12 9 6 15"></polyline>
+                </svg>
+            </button>
+        </div>
+
+        <!-- Address Bar com Breadcrumb Interativo -->
+        <div class="win-os-address-box">
+            <div class="win-address-icon">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" class="text-amber-500">
+                    <path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/>
+                </svg>
+            </div>
+
+            <div class="win-address-crumbs">
+                <span class="win-address-crumb" onclick="navigateToPath('{{activeBucket}}', '')">
+                    {{activeBucketUpper}}
+                </span>
+                {{#breadcrumbs}}
+                <span class="win-address-sep">›</span>
+                <span class="win-address-crumb" onclick="navigateToPath('{{activeBucket}}', '{{accumulatedPath}}')">
+                    {{name}}
+                </span>
+                {{/breadcrumbs}}
+            </div>
+
+            <button class="win-address-refresh-btn" onclick="navigateToPath('{{activeBucket}}', '{{pathFilter}}')" title="Atualizar">
+                <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="23 4 23 10 17 10"></polyline>
+                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                </svg>
+            </button>
+        </div>
+
+        <!-- Caixa de Busca Rápida Estilo Windows Explorer -->
+        <div class="win-os-search-box">
+            <span class="win-search-icon">🔍</span>
+            <input type="text" class="win-search-input" placeholder="Pesquisar em {{activeBucketUpper}}..." onkeyup="filterFilesLocal(this.value)">
+        </div>
+    </div>
+</header>
+
+<!-- Explorer Grid List -->
+<div class="win-explorer-grid" data-active-bucket="{{activeBucket}}" data-active-path="{{pathFilter}}" oncontextmenu="handleGridContextMenu(event)">
+    {{#isEmpty}}
+    <div class="w-full col-span-full py-16 px-4 flex flex-col items-center justify-center text-center select-none animate-fadeIn">
+        <div class="w-20 h-20 mb-4 rounded-2xl flex items-center justify-center bg-gray-100 dark:bg-neutral-800/80 border border-gray-200/80 dark:border-neutral-700/60 shadow-sm transition-transform hover:scale-105">
+            <svg viewBox="0 0 64 64" width="48" height="48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <linearGradient id="emptyFolderGrad" x1="32" y1="20" x2="32" y2="54" gradientUnits="userSpaceOnUse">
+                        <stop offset="0%" stop-color="#FFE072"/>
+                        <stop offset="100%" stop-color="#FFBA24"/>
+                    </linearGradient>
+                </defs>
+                <path d="M7 15C7 11.6863 9.68629 9 13 9H23.5C25.5 9 27.2 10.2 28.5 12.2L31.5 16.5C32.2 17.5 33.3 18 34.5 18H53C56.3137 18 59 20.6863 59 24V46C59 49.3137 56.3137 52 53 52H13C9.68629 52 7 49.3137 7 46V15Z" fill="#E59B00"/>
+                <rect x="7" y="19" width="52" height="34" rx="4.5" fill="url(#emptyFolderGrad)"/>
+            </svg>
+        </div>
+        <h3 class="text-base font-semibold text-gray-800 dark:text-neutral-200 mb-1">Esta pasta está vazia</h3>
+        <p class="text-xs text-gray-500 dark:text-neutral-400 max-w-sm mb-6 leading-relaxed">
+            Nenhum arquivo ou subpasta foi encontrado nesta localização. Comece enviando arquivos ou criando uma nova pasta.
+        </p>
+        <div class="flex items-center gap-3">
+            <button class="win-btn !bg-blue-600 hover:!bg-blue-700 !text-white !border-blue-600 dark:!border-blue-500 shadow-sm" onclick="document.getElementById('fileInput').click()">
+                <span>⬆️</span> Enviar Arquivo
+            </button>
+            <button class="win-btn" onclick="promptNewFolder()">
+                <span>📁</span> Nova Pasta
+            </button>
+        </div>
+    </div>
+    {{/isEmpty}}
+
+    <!-- Pastas -->
+    {{#dirs}}
+    <div class="win-item win-folder-item"
+         onclick="navigateToPath('{{bucket}}', '{{path}}')"
+         oncontextmenu="handleItemContextMenu(event, 'folder', '{{bucket}}', '{{path}}', '{{name}}')"
+         title="Pasta: {{name}} (Clique para abrir, botão direito para opções)">
+        <div class="win-item-icon">
+            <svg viewBox="0 0 64 64" class="win-folder-icon" width="44" height="44" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <linearGradient id="winFolderFrontGrad" x1="32" y1="20" x2="32" y2="54" gradientUnits="userSpaceOnUse">
+                        <stop offset="0%" stop-color="#FFE072"/>
+                        <stop offset="100%" stop-color="#FFBA24"/>
+                    </linearGradient>
+                </defs>
+                <!-- Back flap of folder -->
+                <path d="M7 15C7 11.6863 9.68629 9 13 9H23.5C25.5 9 27.2 10.2 28.5 12.2L31.5 16.5C32.2 17.5 33.3 18 34.5 18H53C56.3137 18 59 20.6863 59 24V46C59 49.3137 56.3137 52 53 52H13C9.68629 52 7 49.3137 7 46V15Z"
+                      fill="#E59B00"/>
+                <!-- Front body of folder with gradient and smooth rounded corners -->
+                <rect x="7" y="19" width="52" height="34" rx="4.5"
+                      fill="url(#winFolderFrontGrad)"/>
+            </svg>
+        </div>
+        <span class="win-item-name">{{name}}</span>
+    </div>
+    {{/dirs}}
+
+    <!-- Arquivos -->
+    {{#files}}
+    <div class="win-item win-file-item"
+         onclick="openPreviewModal('{{bucket}}', '{{key}}', '{{sizeFormatted}}')"
+         data-bytes="{{bytes}}"
+         data-size="{{sizeFormatted}}"
+         data-name="{{name}}"
+         oncontextmenu="handleItemContextMenu(event, 'file', '{{bucket}}', '{{key}}', '{{name}}')"
+         title="{{name}} ({{sizeFormatted}})">
+        <div class="win-item-icon">
+            <svg viewBox="0 0 64 76" class="doc-file-icon" width="40" height="48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <!-- Sombra da dobra superior -->
+                    <filter id="cornerFoldShadow" x="38" y="0" width="26" height="26" filterUnits="userSpaceOnUse">
+                        <feDropShadow dx="-1" dy="2" stdDeviation="1.5" flood-color="#000000" flood-opacity="0.15"/>
+                    </filter>
+                </defs>
+
+                <!-- Corpo da folha branca com canto cortado -->
+                <path d="M8 4C8 1.79086 9.79086 0 12 0H42L56 14V72C56 74.2091 54.2091 76 52 76H12C9.79086 76 8 74.2091 8 72V4Z"
+                      fill="#F3F4F6"/>
+
+                <!-- Dobra do canto superior direito -->
+                <path d="M42 0V12C42 13.1046 42.8954 14 44 14H56L42 0Z"
+                      fill="#D1D5DB" filter="url(#cornerFoldShadow)"/>
+
+                {{#isStandard}}
+                <!-- Linhas de texto com marcadores de ponto (estilo TXT, JS, CSS, PHP, XML, HTM) -->
+                <circle cx="16" cy="22" r="1.5" fill="#9CA3AF"/>
+                <line x1="22" y1="22" x2="40" y2="22" stroke="#9CA3AF" stroke-width="2" stroke-linecap="round"/>
+
+                <circle cx="16" cy="30" r="1.5" fill="#9CA3AF"/>
+                <line x1="22" y1="30" x2="48" y2="30" stroke="#9CA3AF" stroke-width="2" stroke-linecap="round"/>
+
+                <circle cx="16" cy="38" r="1.5" fill="#9CA3AF"/>
+                <line x1="22" y1="38" x2="44" y2="38" stroke="#9CA3AF" stroke-width="2" stroke-linecap="round"/>
+
+                <circle cx="16" cy="46" r="1.5" fill="#9CA3AF"/>
+                <line x1="22" y1="46" x2="46" y2="46" stroke="#9CA3AF" stroke-width="2" stroke-linecap="round"/>
+                {{/isStandard}}
+
+                {{#isTable}}
+                <!-- Grelha de planilha (estilo XLS, XLSX, CSV) -->
+                <rect x="15" y="20" width="34" height="28" rx="1.5" fill="none" stroke="#9CA3AF" stroke-width="1.5"/>
+                <line x1="15" y1="27" x2="49" y2="27" stroke="#9CA3AF" stroke-width="1.2"/>
+                <line x1="15" y1="34" x2="49" y2="34" stroke="#9CA3AF" stroke-width="1.2"/>
+                <line x1="15" y1="41" x2="49" y2="41" stroke="#9CA3AF" stroke-width="1.2"/>
+                <line x1="26" y1="20" x2="26" y2="48" stroke="#9CA3AF" stroke-width="1.2"/>
+                <line x1="37" y1="20" x2="37" y2="48" stroke="#9CA3AF" stroke-width="1.2"/>
+                {{/isTable}}
+
+                {{#isChart}}
+                <!-- Gráfico de pizza / apresentação (estilo PPT, KEY) -->
+                <circle cx="25" cy="30" r="9" fill="#9CA3AF"/>
+                <path d="M25 30L33 24A9 9 0 0 0 25 21V30Z" fill="#F3F4F6"/>
+                <line x1="16" y1="44" x2="48" y2="44" stroke="#9CA3AF" stroke-width="2" stroke-linecap="round"/>
+                <line x1="16" y1="49" x2="40" y2="49" stroke="#9CA3AF" stroke-width="2" stroke-linecap="round"/>
+                {{/isChart}}
+
+                {{#isImage}}
+                <!-- Miniatura de foto (estilo PNG, JPG, GIF) -->
+                <rect x="15" y="22" width="16" height="16" rx="2" fill="#9CA3AF" opacity="0.6"/>
+                <line x1="36" y1="24" x2="48" y2="24" stroke="#9CA3AF" stroke-width="2" stroke-linecap="round"/>
+                <line x1="36" y1="30" x2="48" y2="30" stroke="#9CA3AF" stroke-width="2" stroke-linecap="round"/>
+                <line x1="36" y1="36" x2="44" y2="36" stroke="#9CA3AF" stroke-width="2" stroke-linecap="round"/>
+                <line x1="16" y1="45" x2="48" y2="45" stroke="#9CA3AF" stroke-width="2" stroke-linecap="round"/>
+                {{/isImage}}
+
+                <!-- Faixa colorida com o tipo do arquivo (banner inferior) -->
+                <rect x="8" y="55" width="48" height="17" fill="{{badgeBg}}"/>
+                <text x="32" y="67.5" fill="#FFFFFF" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="9" font-weight="800" text-anchor="middle" letter-spacing="0.5">
+                    {{ext}}
+                </text>
+            </svg>
+        </div>
+        <span class="win-item-name">{{name}}</span>
+    </div>
+    {{/files}}
+</div>
+{{/unavailable}}
+{{/restricted}}
