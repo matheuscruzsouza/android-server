@@ -10,9 +10,8 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.github.matheuscruzsouza.androidserver.R;
-import com.github.matheuscruzsouza.androidserver.model.UserFile;
+import com.github.matheuscruzsouza.androidserver.model.S3ObjectItem;
 
-import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -22,11 +21,11 @@ import java.util.Locale;
 public class FileAdminAdapter extends RecyclerView.Adapter<FileAdminAdapter.FileViewHolder> {
 
     public interface OnFileActionListener {
-        void onOpenFile(UserFile file);
-        void onDeleteFile(UserFile file);
+        void onOpenFile(S3ObjectItem file);
+        void onDeleteFile(S3ObjectItem file);
     }
 
-    private List<UserFile> fileList = new ArrayList<>();
+    private List<S3ObjectItem> fileList = new ArrayList<>();
     private final OnFileActionListener listener;
     private final SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM HH:mm", Locale.getDefault());
 
@@ -34,7 +33,7 @@ public class FileAdminAdapter extends RecyclerView.Adapter<FileAdminAdapter.File
         this.listener = listener;
     }
 
-    public void updateData(List<UserFile> newList) {
+    public void updateData(List<S3ObjectItem> newList) {
         this.fileList = new ArrayList<>(newList);
         notifyDataSetChanged();
     }
@@ -48,16 +47,20 @@ public class FileAdminAdapter extends RecyclerView.Adapter<FileAdminAdapter.File
 
     @Override
     public void onBindViewHolder(@NonNull FileViewHolder holder, int position) {
-        UserFile file = fileList.get(position);
-        holder.tvFileName.setText(file.getFileName());
+        S3ObjectItem file = fileList.get(position);
+        holder.tvFileName.setText(file.getKey());
+        holder.tvFileBucket.setText(file.getBucket());
 
-        File f = new File(file.getFilePath());
-        String sizeStr = formatFileSize(f.exists() ? f.length() : 0);
-        String dateStr = dateFormat.format(new Date(file.getUploadTimestamp()));
+        String sizeStr = formatFileSize(file.getSize());
+        String dateStr = dateFormat.format(new Date(file.getLastModified()));
 
-        holder.tvFileDetails.setText("User ID: " + file.getUserId() + " • " + sizeStr + " • " + dateStr);
+        holder.tvFileDetails.setText(sizeStr + " • " + dateStr);
 
         holder.btnOpen.setOnClickListener(v -> {
+            if (listener != null) listener.onOpenFile(file);
+        });
+
+        holder.itemView.setOnClickListener(v -> {
             if (listener != null) listener.onOpenFile(file);
         });
 
@@ -80,6 +83,7 @@ public class FileAdminAdapter extends RecyclerView.Adapter<FileAdminAdapter.File
 
     static class FileViewHolder extends RecyclerView.ViewHolder {
         TextView tvFileName;
+        TextView tvFileBucket;
         TextView tvFileDetails;
         Button btnOpen;
         Button btnDelete;
@@ -87,6 +91,7 @@ public class FileAdminAdapter extends RecyclerView.Adapter<FileAdminAdapter.File
         public FileViewHolder(@NonNull View itemView) {
             super(itemView);
             tvFileName = itemView.findViewById(R.id.tvFileName);
+            tvFileBucket = itemView.findViewById(R.id.tvFileBucket);
             tvFileDetails = itemView.findViewById(R.id.tvFileDetails);
             btnOpen = itemView.findViewById(R.id.btnOpenFile);
             btnDelete = itemView.findViewById(R.id.btnDeleteFile);

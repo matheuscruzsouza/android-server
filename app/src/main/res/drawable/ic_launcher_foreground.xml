@@ -4,53 +4,58 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- Rack de Servidor Superior -->
+    <!-- Caixa/Cubo 3D de Storage central S4 -->
+    <!-- Top Face (Cubo de Storage) -->
     <path
-        android:fillColor="#1C1C1E"
-        android:pathData="M34,36h40c2.2,0 4,1.8 4,4v6c0,2.2 -1.8,4 -4,4H34c-2.2,0 -4,-1.8 -4,-4v-6c0,-2.2 1.8,-4 4,-4z" />
+        android:fillColor="#3B82F6"
+        android:pathData="M54,26 L76,38 L54,50 L32,38 Z" />
+
+    <!-- Left Face (Cubo de Storage) -->
     <path
-        android:fillColor="#2C2C2E"
-        android:strokeColor="#3A3A3C"
-        android:strokeWidth="1"
-        android:pathData="M34,36h40c2.2,0 4,1.8 4,4v6c0,2.2 -1.8,4 -4,4H34c-2.2,0 -4,-1.8 -4,-4v-6c0,-2.2 1.8,-4 4,-4z" />
-    <!-- LED verde ativo do Servidor Superior -->
+        android:fillColor="#2563EB"
+        android:pathData="M32,38 L54,50 L54,78 L32,66 Z" />
+
+    <!-- Right Face (Cubo de Storage) -->
     <path
-        android:fillColor="#30D158"
-        android:pathData="M40,43m-2.5,0a2.5,2.5 0 1,1 5,0a2.5,2.5 0 1,1 -5,0" />
-    <!-- Linha de ventilação do Servidor Superior -->
+        android:fillColor="#1D4ED8"
+        android:pathData="M54,50 L76,38 L76,66 L54,78 Z" />
+
+    <!-- Contorno de bordas do cubo -->
     <path
         android:fillColor="#00000000"
-        android:strokeColor="#8E8E93"
+        android:strokeColor="#60A5FA"
         android:strokeWidth="1.5"
-        android:strokeLineCap="round"
-        android:pathData="M48,43h24" />
+        android:strokeLineJoin="round"
+        android:pathData="M54,26 L76,38 L76,66 L54,78 L32,66 L32,38 Z M54,50 L54,78 M54,50 L76,38 M54,50 L32,38" />
 
-    <!-- Rack de Servidor Inferior -->
-    <path
-        android:fillColor="#1C1C1E"
-        android:pathData="M34,54h40c2.2,0 4,1.8 4,4v6c0,2.2 -1.8,4 -4,4H34c-2.2,0 -4,-1.8 -4,-4v-6c0,-2.2 1.8,-4 4,-4z" />
-    <path
-        android:fillColor="#2C2C2E"
-        android:strokeColor="#3A3A3C"
-        android:strokeWidth="1"
-        android:pathData="M34,54h40c2.2,0 4,1.8 4,4v6c0,2.2 -1.8,4 -4,4H34c-2.2,0 -4,-1.8 -4,-4v-6c0,-2.2 1.8,-4 4,-4z" />
-    <!-- LED azul ativo do Servidor Inferior -->
-    <path
-        android:fillColor="#0A84FF"
-        android:pathData="M40,61m-2.5,0a2.5,2.5 0 1,1 5,0a2.5,2.5 0 1,1 -5,0" />
-    <!-- Linha de ventilação do Servidor Inferior -->
+    <!-- Letra "S" estilizada gravada na face esquerda -->
     <path
         android:fillColor="#00000000"
-        android:strokeColor="#8E8E93"
-        android:strokeWidth="1.5"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2.5"
         android:strokeLineCap="round"
-        android:pathData="M48,61h24" />
+        android:strokeLineJoin="round"
+        android:pathData="M48,46 L40,49 C39,53 47,54 46,58 L38,61" />
 
-    <!-- Broto/Folha do Spring nascendo do topo em verde elétrico -->
+    <!-- Número "4" estilizado gravado na face direita -->
     <path
-        android:fillColor="#30D158"
-        android:pathData="M54,34c-2.5,-6 1,-12 8,-14c-1,7 -4,11 -8,14z" />
+        android:fillColor="#00000000"
+        android:strokeColor="#93C5FD"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M66,46 L60,54 L70,54 M67,49 L67,61" />
+
+    <!-- Órbita / Anel de compartilhamento (Shared Storage Ring) -->
     <path
-        android:fillColor="#28B84D"
-        android:pathData="M54,34c-4,-3 -6,-7 -5,-11c4,1 7,5 5,11z" />
+        android:fillColor="#00000000"
+        android:strokeColor="#10B981"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:pathData="M24,52 C22,66 40,78 64,74 C78,71 86,61 84,52" />
+
+    <!-- Ponto de nó compartilhado no anel -->
+    <path
+        android:fillColor="#10B981"
+        android:pathData="M84,52m-2.5,0a2.5,2.5 0 1,1 5,0a2.5,2.5 0 1,1 -5,0" />
 </vector>

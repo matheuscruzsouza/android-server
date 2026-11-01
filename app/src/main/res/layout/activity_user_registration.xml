@@ -35,7 +35,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
             android:fontFamily="sans-serif-black"
-            android:text="Novo Usuário"
+            android:text="Nova Credencial IAM"
             android:textColor="#FFFFFF"
             android:textSize="24sp"
             android:textStyle="bold" />
@@ -46,7 +46,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="2dp"
             android:fontFamily="sans-serif-medium"
-            android:text="Testando API REST (POST)"
+            android:text="Gerenciamento de Acesso e Permissões S3"
             android:textColor="#8E8E93"
             android:textSize="13sp" />
 
@@ -81,11 +81,35 @@
                     app:hintTextColor="#8E8E93">
 
                     <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/etUsername"
+                        android:id="@+id/etName"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="Username (@joao)"
-                        android:inputType="text"
+                        android:hint="Nome de Identificação (ex: App Sync)"
+                        android:inputType="textPersonName"
+                        android:textColor="#FFFFFF"
+                        android:textSize="14sp" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="12dp"
+                    android:textColorHint="#8E8E93"
+                    app:boxBackgroundColor="#2C2C2E"
+                    app:boxCornerRadiusBottomEnd="10dp"
+                    app:boxCornerRadiusBottomStart="10dp"
+                    app:boxCornerRadiusTopEnd="10dp"
+                    app:boxCornerRadiusTopStart="10dp"
+                    app:boxStrokeWidth="0dp"
+                    app:boxStrokeWidthFocused="0dp"
+                    app:hintTextColor="#8E8E93">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/etAccessKey"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="Access Key ID (ex: AKIA_CLIENT_01)"
+                        android:inputType="textCapCharacters"
                         android:textColor="#FFFFFF"
                         android:textSize="14sp" />
                 </com.google.android.material.textfield.TextInputLayout>
@@ -105,21 +129,39 @@
                     app:hintTextColor="#8E8E93">
 
                     <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/etName"
+                        android:id="@+id/etSecretKey"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="Nome Completo"
-                        android:inputType="textPersonName"
+                        android:hint="Secret Access Key / Token"
+                        android:inputType="text"
                         android:textColor="#FFFFFF"
                         android:textSize="14sp" />
                 </com.google.android.material.textfield.TextInputLayout>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="6dp"
+                    android:fontFamily="sans-serif-medium"
+                    android:text="Política de Permissão"
+                    android:textColor="#8E8E93"
+                    android:textSize="13sp" />
+
+                <Spinner
+                    android:id="@+id/spPolicy"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:layout_marginBottom="20dp"
+                    android:background="#2C2C2E"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnSubmit"
                     android:layout_width="match_parent"
                     android:layout_height="50dp"
                     android:fontFamily="sans-serif-bold"
-                    android:text="Cadastrar Usuário"
+                    android:text="Criar Usuário IAM"
                     android:textColor="#FFFFFF"
                     android:textSize="15sp"
                     app:backgroundTint="#0A84FF"

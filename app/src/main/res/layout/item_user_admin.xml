@@ -22,25 +22,69 @@
             android:layout_weight="1"
             android:orientation="vertical">
 
-            <TextView
-                android:id="@+id/tvUserName"
+            <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:fontFamily="sans-serif-bold"
-                android:text="Nome do Usuário"
-                android:textColor="#FFFFFF"
-                android:textSize="17sp" />
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/tvUserName"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="sans-serif-bold"
+                    android:text="Nome do Usuário"
+                    android:textColor="#FFFFFF"
+                    android:textSize="17sp" />
+
+                <TextView
+                    android:id="@+id/tvUserPolicy"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:background="#2C2C2E"
+                    android:fontFamily="sans-serif-bold"
+                    android:paddingStart="8dp"
+                    android:paddingTop="2dp"
+                    android:paddingEnd="8dp"
+                    android:paddingBottom="2dp"
+                    android:text="Admin"
+                    android:textColor="#0A84FF"
+                    android:textSize="11sp" />
+            </LinearLayout>
 
             <TextView
                 android:id="@+id/tvUserHandle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
-                android:fontFamily="sans-serif"
-                android:text="@usuario"
+                android:layout_marginTop="3dp"
+                android:fontFamily="monospace"
+                android:text="AKIA_ADMIN_ANDROID"
                 android:textColor="#8E8E93"
-                android:textSize="14sp" />
+                android:textSize="13sp" />
+
+            <TextView
+                android:id="@+id/tvUserSecret"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:fontFamily="monospace"
+                android:text="Secret: ••••••••"
+                android:textColor="#636366"
+                android:textSize="11sp" />
         </LinearLayout>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnConfigUser"
+            android:layout_width="wrap_content"
+            android:layout_height="38dp"
+            android:layout_marginEnd="6dp"
+            android:fontFamily="sans-serif-medium"
+            android:text="Gerenciar"
+            android:textColor="#0A84FF"
+            android:textSize="12sp"
+            app:backgroundTint="#2C2C2E"
+            app:cornerRadius="10dp" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnDeleteUser"

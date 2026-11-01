@@ -199,7 +199,7 @@ public class WebController {
         }
         sb.append("<a href='/' class='btn-action'>Página Inicial</a>");
         sb.append("</div></div>");
-        sb.append("<footer class='footer'><p><strong>AndroidServer</strong> • nano-spring 1.3.0</p></footer>");
+        sb.append("<footer class='footer'><p><strong>AndroidServer</strong> • nano-spring 1.6.0</p></footer>");
         sb.append("</div></body></html>");
         return sb.toString();
     }

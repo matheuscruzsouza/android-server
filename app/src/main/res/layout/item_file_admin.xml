@@ -22,24 +22,46 @@
             android:layout_weight="1"
             android:orientation="vertical">
 
-            <TextView
-                android:id="@+id/tvFileName"
+            <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:ellipsize="middle"
-                android:fontFamily="sans-serif-bold"
-                android:singleLine="true"
-                android:text="arquivo.pdf"
-                android:textColor="#FFFFFF"
-                android:textSize="16sp" />
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/tvFileBucket"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="8dp"
+                    android:background="#2C2C2E"
+                    android:fontFamily="sans-serif-bold"
+                    android:paddingStart="8dp"
+                    android:paddingTop="2dp"
+                    android:paddingEnd="8dp"
+                    android:paddingBottom="2dp"
+                    android:text="default"
+                    android:textColor="#30D158"
+                    android:textSize="11sp" />
+
+                <TextView
+                    android:id="@+id/tvFileName"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="middle"
+                    android:fontFamily="sans-serif-bold"
+                    android:singleLine="true"
+                    android:text="arquivo.pdf"
+                    android:textColor="#FFFFFF"
+                    android:textSize="16sp" />
+            </LinearLayout>
 
             <TextView
                 android:id="@+id/tvFileDetails"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="3dp"
+                android:layout_marginTop="4dp"
                 android:fontFamily="sans-serif"
-                android:text="Usuário: 1 • 2.4 MB • 28/09 15:30"
+                android:text="2.4 MB • 28/09 15:30"
                 android:textColor="#8E8E93"
                 android:textSize="13sp" />
         </LinearLayout>
