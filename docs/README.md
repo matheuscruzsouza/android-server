@@ -1,11 +1,34 @@
-# AndroidServer • Documentação de Arquitetura e Referência (nano-spring 1.6.0)
+# S4 (Simple Shared Storage Service) • Documentação de Arquitetura e Referência (nano-spring 2.4.0)
 
 Consulte o arquivo principal [README.md](../README.md) na raiz do projeto para instruções de início rápido e catálogo completo de comandos.
 
-## Novidades do nano-spring 1.6.0
+## Visão Geral e Foco do Projeto
 
-### 1. Suporte Nativo a CORS (`CorsConfiguration`)
-O nano-spring 1.6.0 adiciona suporte integrado a Cross-Origin Resource Sharing (CORS):
+O **S4 (Simple Shared Storage Service)** (anteriormente denominado *AndroidServer*) é a aplicação oficial de referência ("PetClinic") da suíte modular do **nano-spring 2.4.0** no ecossistema Android.
+
+O objetivo do S4 é demonstrar como um aparelho Android físico de baixa especificação pode atuar como um **serviço completo de armazenamento em nuvem pessoal / servidor de arquivos na rede local**, unindo:
+- **Compatibilidade S3 & SigV4**: Endpoints nativos em `/` e `/s3` com suporte a AWS Signature Version 4, Presigned URLs, Range Requests e multipart upload.
+- **Mini-IAM Nativo**: Sistema de autenticação e autorização por chaves de acesso com suporte a políticas (`Admin`, `ReadOnly`, `WriteOnly`).
+- **S4 Desktop Explorer**: Interface web rica com tema escuro (estilo Windows 11 Explorer), suporte a drag & drop, navegação por pastas, visualização de arquivos e player integrado.
+- **Micro-arquitetura nano-spring 2.4.0**: Módulos desacoplados (`nano-spring-core`, `nano-spring-web`, `nano-spring-data`, `nano-spring-discovery`).
+
+---
+
+## Novidades e Módulos do nano-spring 2.4.0
+
+### 1. Arquitetura Modular
+A partir da versão 2.x, o nano-spring é distribuído em artefatos dedicados:
+- `nano-spring-core`: DI container, anotações (`@Service`, `@Autowired`, `@Value`), ciclo de vida e eventos.
+- `nano-spring-web`: Servidor HTTP baseado em NanoHTTPD, `@RestController`, `@Interceptor`, SSE, JMustache e Swagger/OpenAPI.
+- `nano-spring-data`: Abstração de persistência, `@Repository`, migrações com `SqliteMigrator`.
+- `nano-spring-discovery`: Descoberta Zeroconf/DNS-SD via `NsdServiceManager` e resolução de Host mDNS (`MdnsHostResponder`).
+
+### 2. Suporte Nativo a OpenAPI / Swagger
+- Documentação interativa exposta via `/swagger-ui.html` e contrato `/v3/api-docs`.
+- Configurável através de `nano.swagger.enabled=true`.
+
+### 3. Suporte Nativo a CORS (`CorsConfiguration`)
+O nano-spring adiciona suporte integrado a Cross-Origin Resource Sharing (CORS):
 - Trata automaticamente requisições HTTP do método `OPTIONS` (Preflight) devolvendo `200 OK` e os cabeçalhos `Access-Control-*`.
 - Anexa automaticamente cabeçalhos CORS em todas as respostas HTTP quando ativo.
 - Configurável via `application.properties`:
@@ -18,31 +41,29 @@ O nano-spring 1.6.0 adiciona suporte integrado a Cross-Origin Resource Sharing (
   ```
 - Injetável no container DI via `@Autowired private CorsConfiguration corsConfiguration;`.
 
-## Novidades do nano-spring 1.5.0
-
-### 1. Resolução de Host mDNS para Navegadores (`MdnsHostResponder`)
-O nano-spring 1.5.0 adiciona o `MdnsHostResponder`, permitindo que navegadores desktop e móveis acessem o servidor via `http://<nome>.local:<porta>/`:
+### 4. Resolução de Host mDNS para Navegadores (`MdnsHostResponder`)
+Permite que navegadores desktop e móveis acessem o servidor diretamente via `http://s4.local:9090/`:
 - Responde nativamente a consultas de Host (registro A) na porta Multicast UDP `5353` (`224.0.0.251`).
 - Gerencia automaticamente o `WifiManager.MulticastLock` do Android durante o ciclo de vida do servidor.
 - Configurável via `application.properties`:
   ```properties
   nano.nsd.enabled=true
-  nano.nsd.name=AndroidServer
+  nano.nsd.name=s4
   nano.nsd.type=_http._tcp.
   nano.nsd.host-resolution=true
   ```
 - Integrado ao `NsdServiceManager`, acessível via `nsdServiceManager.getHostResponder()`.
 
-### 2. Descoberta de Serviço com NsdServiceManager (mDNS / Zeroconf / Bonjour - 1.4.0+)
+### 5. Descoberta de Serviço com NsdServiceManager (mDNS / Zeroconf / Bonjour)
 Suporte nativo ao Android `NsdManager`:
 - Anúncio de serviço na rede local via protocolo DNS-SD / mDNS (`_http._tcp.`).
 - O serviço é registrado automaticamente na inicialização (`server.start()`) e desregistrado ao encerrar (`server.stop()`), prevenindo serviços órfãos.
 - Injetável em controladores e serviços via `@Autowired private NsdServiceManager nsdServiceManager;`.
 
-### 2. Migrações de Banco de Dados com `SqliteMigrator` (1.3.0+)
+### 6. Migrações de Banco de Dados com `SqliteMigrator`
 O nano-spring traz gerenciamento nativo de esquemas SQLite estilo Flyway:
 - Localização padrão em `assets/db/migration/`.
-- Padrão de nomenclatura obrigatório: `V{numero}__{descricao}.sql` (ex: `V1__init_server_events.sql`).
+- Padrão de nomenclatura obrigatório: `V{numero}__{descricao}.sql` (ex: `V1__init_server_events.sql`, `V2__init_iam.sql`, `V3__migrate_legacy_users.sql`).
 - Tabela de controle de versão: `nano_schema_history` criada e controlada automaticamente.
 - Permite configurar o nome do banco e localização via `application.properties`:
   ```properties
@@ -51,7 +72,7 @@ O nano-spring traz gerenciamento nativo de esquemas SQLite estilo Flyway:
   nano.datasource.migration.location=db/migration
   ```
 
-### 3. Anotação `@Repository` e Injeção de `SQLiteDatabase`
+### 7. Anotação `@Repository` e Injeção de `SQLiteDatabase`
 - Classes anotadas com `@Repository` são identificadas automaticamente durante o escaneamento do `DexFile` e instanciadas como singletons no container de injeção de dependência.
 - O `SQLiteDatabase` gerenciado é injetado diretamente com `@Autowired private SQLiteDatabase database;`.
 

@@ -7,6 +7,7 @@ import com.github.matheuscruzsouza.nanospring.annotation.PathVariable;
 import com.github.matheuscruzsouza.nanospring.annotation.RequestBody;
 import com.github.matheuscruzsouza.nanospring.annotation.RequestParam;
 import com.github.matheuscruzsouza.nanospring.annotation.RestController;
+import com.github.matheuscruzsouza.nanospring.openapi.annotation.Hidden;
 import com.github.matheuscruzsouza.nanospring.http.HttpStatus;
 import com.github.matheuscruzsouza.nanospring.http.ResponseEntity;
 import com.github.matheuscruzsouza.androidserver.model.User;
@@ -15,6 +16,7 @@ import com.github.matheuscruzsouza.androidserver.service.UserService;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Hidden
 @RestController("/api/users")
 public class UserController {
 

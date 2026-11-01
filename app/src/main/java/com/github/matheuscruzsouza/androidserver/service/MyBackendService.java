@@ -1,41 +1,31 @@
 package com.github.matheuscruzsouza.androidserver.service;
 
 import android.app.Notification;
-import android.app.NotificationChannel;
-import android.app.NotificationManager;
 import android.app.PendingIntent;
-import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
 import android.os.Handler;
-import android.os.IBinder;
 import android.os.Looper;
 import android.util.Log;
 
-import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 
 import com.github.matheuscruzsouza.androidserver.MainActivity;
-import com.github.matheuscruzsouza.androidserver.NetworkUtils;
-import com.github.matheuscruzsouza.androidserver.R;
+import com.github.matheuscruzsouza.androidserver.config.ServerConfig;
 import com.github.matheuscruzsouza.androidserver.log.ServerLogBus;
 import com.github.matheuscruzsouza.nanospring.server.Environment;
 import com.github.matheuscruzsouza.nanospring.server.Server;
+import com.github.matheuscruzsouza.nanospring.service.NanoSpringService;
 
-public class MyBackendService extends Service {
+public class MyBackendService extends NanoSpringService {
 
     public static final String ACTION_STOP_SERVER = "com.github.matheuscruzsouza.androidserver.ACTION_STOP";
     public static final String ACTION_UPDATE_NOTIFICATION = "com.github.matheuscruzsouza.androidserver.ACTION_UPDATE_NOTIFICATION";
     public static final String EXTRA_CUSTOM_TEXT = "extra_custom_text";
 
-    private static final String CHANNEL_ID = "android_server_channel";
-    private static final int NOTIFICATION_ID = 1;
-    private static final int PORT = 8080;
-
     private static MyBackendService instance;
-    private Server server;
-    private NotificationManager notificationManager;
+    private NanoLocalTunnel localTunnel;
     private String customStatusMessage = null;
 
     private final Handler tickerHandler = new Handler(Looper.getMainLooper());
@@ -43,7 +33,7 @@ public class MyBackendService extends Service {
         @Override
         public void run() {
             updateNotification();
-            tickerHandler.postDelayed(this, 3000); // Atualiza métricas na notificação a cada 3s
+            tickerHandler.postDelayed(this, 3000);
         }
     };
 
@@ -51,12 +41,125 @@ public class MyBackendService extends Service {
         return instance;
     }
 
+    public NanoLocalTunnel getLocalTunnel() {
+        return localTunnel;
+    }
+
+    public synchronized void restartLocalTunnel() {
+        new Thread(() -> {
+            synchronized (MyBackendService.this) {
+                if (localTunnel != null) {
+                    try {
+                        localTunnel.close();
+                    } catch (Exception ignored) {}
+                    localTunnel = null;
+                }
+
+                Context context = getApplicationContext();
+                boolean ltEnabled = ServerConfig.isLocalTunnelEnabled(context);
+                if (!ltEnabled) {
+                    updateNotification();
+                    return;
+                }
+
+                int configuredPort = ServerConfig.getServerPort(context);
+                String subdomain = ServerConfig.getLocalTunnelSubdomain(context);
+                try {
+                    localTunnel = new NanoLocalTunnel(configuredPort, subdomain);
+                    localTunnel.start();
+                    updateNotification();
+                } catch (Exception e) {
+                    Log.w("MyBackendService", "Falha ao iniciar LocalTunnel: " + e.getMessage());
+                    ServerLogBus.log("[LOCALTUNNEL] Erro ao iniciar túnel: " + e.getMessage());
+                }
+            }
+        }).start();
+    }
+
     @Override
     public void onCreate() {
-        super.onCreate();
         instance = this;
-        notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-        createNotificationChannel();
+        super.onCreate();
+    }
+
+    @Override
+    protected int getPort() {
+        Context context = getApplicationContext();
+        if (context == null) context = this;
+        return ServerConfig.getServerPort(context);
+    }
+
+    @Override
+    protected String getBasePackage() {
+        return "com.github.matheuscruzsouza.androidserver";
+    }
+
+    private com.github.matheuscruzsouza.androidserver.storage.StorageManager storageManager;
+    private com.github.matheuscruzsouza.androidserver.service.IamService iamService;
+
+    @Override
+    protected Server createServer() {
+        Context context = getApplicationContext();
+        if (context == null) context = this;
+        Environment.init(context);
+        ServerConfig.syncWithEnvironment(context);
+        int configuredPort = ServerConfig.getServerPort(context);
+
+        this.storageManager = new com.github.matheuscruzsouza.androidserver.storage.StorageManager(context);
+        this.iamService = new com.github.matheuscruzsouza.androidserver.service.IamService(context);
+
+        return new Server(context, configuredPort, getBasePackage()) {
+            @Override
+            protected fi.iki.elonen.NanoHTTPD.ClientHandler createClientHandler(
+                    final java.net.Socket finalAccept,
+                    final java.io.InputStream inputStream) {
+                return super.createClientHandler(new FastSocketWrapper(finalAccept), inputStream);
+            }
+
+            @Override
+            public fi.iki.elonen.NanoHTTPD.Response serve(fi.iki.elonen.NanoHTTPD.IHTTPSession session) {
+                // Interceptação de requisições S3 (como HEAD Bucket e HEAD Object)
+                com.github.matheuscruzsouza.androidserver.s3.S3RequestDispatcher s3Dispatcher =
+                        new com.github.matheuscruzsouza.androidserver.s3.S3RequestDispatcher(storageManager, iamService);
+                if (s3Dispatcher.isS3Request(session)) {
+                    fi.iki.elonen.NanoHTTPD.Response s3Response = s3Dispatcher.dispatch(session);
+                    if (s3Response != null) {
+                        return s3Response;
+                    }
+                }
+
+                fi.iki.elonen.NanoHTTPD.Response res = super.serve(session);
+                if (res != null && session.getUri() != null && session.getUri().startsWith("/static/")) {
+                    res.addHeader("Cache-Control", "public, max-age=3600");
+                }
+                return res;
+            }
+        };
+    }
+
+    @Override
+    protected void onServerStarted(Server startedServer) {
+        super.onServerStarted(startedServer);
+        ServerLogBus.startServerTimer();
+
+        Context context = getApplicationContext();
+        try {
+            com.github.matheuscruzsouza.androidserver.model.AppDatabase.getInstance(context).getOpenHelper().getWritableDatabase();
+        } catch (Exception ignored) {}
+
+        boolean ltEnabled = ServerConfig.isLocalTunnelEnabled(context);
+        if (ltEnabled) {
+            int configuredPort = ServerConfig.getServerPort(context);
+            String subdomain = ServerConfig.getLocalTunnelSubdomain(context);
+            try {
+                localTunnel = new NanoLocalTunnel(configuredPort, subdomain);
+                localTunnel.start();
+            } catch (Exception e) {
+                Log.w("MyBackendService", "Falha ao iniciar LocalTunnel: " + e.getMessage());
+                ServerLogBus.log("[LOCALTUNNEL] Erro ao iniciar túnel: " + e.getMessage());
+            }
+        }
+        updateNotification();
     }
 
     @Override
@@ -75,45 +178,17 @@ public class MyBackendService extends Service {
             }
         }
 
-        startForeground(NOTIFICATION_ID, buildNotification());
+        int result = super.onStartCommand(intent, flags, startId);
         tickerHandler.removeCallbacks(tickerRunnable);
         tickerHandler.postDelayed(tickerRunnable, 3000);
-
-        if (server == null) {
-            new Thread(() -> {
-                Context context = getApplicationContext();
-                Environment.init(context);
-                server = new Server(context, PORT, "com.github.matheuscruzsouza.androidserver");
-                ServerLogBus.startServerTimer();
-
-                // Pré-aquecimento de baixo consumo na mesma thread de inicialização
-                try {
-                    com.github.matheuscruzsouza.androidserver.model.AppDatabase.getInstance(context).getOpenHelper().getWritableDatabase();
-                } catch (Exception ignored) {}
-            }).start();
-        }
-
-        return START_STICKY;
-    }
-
-    private void createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel channel = new NotificationChannel(
-                    CHANNEL_ID,
-                    "Servidor Android Ativo",
-                    NotificationManager.IMPORTANCE_LOW
-            );
-            channel.setDescription("Notificação de status contínuo do servidor HTTP");
-            channel.setShowBadge(false);
-            if (notificationManager != null) {
-                notificationManager.createNotificationChannel(channel);
-            }
-        }
+        updateNotification();
+        return result;
     }
 
     public synchronized void updateNotification() {
-        if (notificationManager != null) {
-            notificationManager.notify(NOTIFICATION_ID, buildNotification());
+        android.app.NotificationManager nm = (android.app.NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        if (nm != null) {
+            nm.notify(getNotificationId(), buildNotification());
         }
     }
 
@@ -128,23 +203,19 @@ public class MyBackendService extends Service {
             pendingFlags |= PendingIntent.FLAG_IMMUTABLE;
         }
 
-        // 1. Clique para abrir a tela principal
         Intent openAppIntent = new Intent(this, MainActivity.class);
         PendingIntent pOpenApp = PendingIntent.getActivity(this, 0, openAppIntent, pendingFlags);
 
-        // 2. Ação de Parar Servidor direto da notificação
         Intent stopIntent = new Intent(this, MyBackendService.class);
         stopIntent.setAction(ACTION_STOP_SERVER);
         PendingIntent pStop = PendingIntent.getService(this, 1, stopIntent, pendingFlags);
 
-        String ip = NetworkUtils.getLocalIpAddress();
-        String port = Environment.getProperty("server.port", String.valueOf(PORT));
-        String serverUrl = "http://" + ip + ":" + port;
-
+        String serverUrl = ServerConfig.getMdnsUrl(this);
         int reqs = ServerLogBus.getRequestCount();
         String uptimeStr = calculateUptime();
 
-        String title = "Nano-Spring Server • Online";
+        String title = "S4 Server • Online";
+        String tunnelUrl = (localTunnel != null && localTunnel.getPublicUrl() != null) ? localTunnel.getPublicUrl() : null;
         String contentText = customStatusMessage != null ? customStatusMessage : "Acesse: " + serverUrl;
         String subText = reqs + " reqs • " + uptimeStr;
 
@@ -152,12 +223,13 @@ public class MyBackendService extends Service {
                 .setBigContentTitle(title)
                 .bigText(
                         "URL: " + serverUrl + "\n" +
+                        (tunnelUrl != null ? "Tunnel: " + tunnelUrl + "\n" : "") +
                         "Status: " + (customStatusMessage != null ? customStatusMessage : "Em execução") + "\n" +
                         "Tráfego: " + reqs + " requisições atendidas\n" +
                         "Tempo Ativo: " + uptimeStr
                 );
 
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, getChannelId())
                 .setSmallIcon(android.R.drawable.stat_notify_sync)
                 .setContentTitle(title)
                 .setContentText(contentText)
@@ -187,16 +259,10 @@ public class MyBackendService extends Service {
         instance = null;
         tickerHandler.removeCallbacks(tickerRunnable);
         ServerLogBus.stopServerTimer();
-        if (server != null) {
-            server.stop();
-            server = null;
+        if (localTunnel != null) {
+            localTunnel.close();
+            localTunnel = null;
         }
         super.onDestroy();
-    }
-
-    @Nullable
-    @Override
-    public IBinder onBind(Intent intent) {
-        return null;
     }
 }

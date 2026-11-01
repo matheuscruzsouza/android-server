@@ -1,0 +1,19 @@
+<div class="s4-sidebar-section">
+    <span class="s4-section-title">PASTAS &amp; BUCKETS</span>
+    <nav class="s4-nav-list">
+        {{#folders}}
+        <a href="javascript:void(0)" onclick="navigateToPath('{{bucket}}', '{{path}}')" data-bucket="{{bucket}}" data-path="{{path}}" class="s4-nav-item {{#isActive}}active{{/isActive}}" style="{{#paddingLeft}}padding-left: {{paddingLeft}}px;{{/paddingLeft}}" title="{{displayName}}">
+            <span class="s4-nav-icon">
+                {{#isRoot}}<img src="/static/icons/papirus/folder-root.svg" alt="Root" />{{/isRoot}}
+                {{^isRoot}}{{#isActive}}<img src="/static/icons/papirus/folder-open.svg" alt="Folder" />{{/isActive}}{{^isActive}}<img src="/static/icons/papirus/folder.svg" alt="Folder" />{{/isActive}}{{/isRoot}}
+            </span>
+            <span class="s4-nav-text">{{displayName}}</span>
+        </a>
+        {{/folders}}
+        {{^folders}}
+        <div class="s4-nav-empty" style="padding: 6px 10px; font-size: 11px; color: #888888;">
+            Nenhuma pasta encontrada
+        </div>
+        {{/folders}}
+    </nav>
+</div>

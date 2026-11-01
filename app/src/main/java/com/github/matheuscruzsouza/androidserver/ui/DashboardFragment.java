@@ -20,8 +20,8 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
-import com.github.matheuscruzsouza.androidserver.NetworkUtils;
 import com.github.matheuscruzsouza.androidserver.R;
+import com.github.matheuscruzsouza.androidserver.config.ServerConfig;
 import com.github.matheuscruzsouza.androidserver.log.ServerLogBus;
 import com.github.matheuscruzsouza.androidserver.service.MyBackendService;
 import com.github.matheuscruzsouza.nanospring.server.Environment;
@@ -35,9 +35,14 @@ public class DashboardFragment extends Fragment {
     private ImageView ivStatusIcon;
     private TextView tvTotalRequestsCount;
     private TextView tvUptimeText;
-    private Button btnStart;
-    private Button btnStop;
     private TextView tvCopyUrl;
+    private TextView tvMdnsAccessUrl;
+
+    private TextView tvMemoryUsedLabel;
+    private TextView tvMemoryPercent;
+    private android.widget.ProgressBar pbMemoryUsage;
+    private TextView tvMemoryFreeLabel;
+    private TextView tvMemoryTotalLabel;
 
     private final Handler timerHandler = new Handler(Looper.getMainLooper());
     private final Runnable timerRunnable = new Runnable() {
@@ -58,21 +63,24 @@ public class DashboardFragment extends Fragment {
         ivStatusIcon = view.findViewById(R.id.ivStatusIcon);
         tvTotalRequestsCount = view.findViewById(R.id.tvTotalRequestsCount);
         tvUptimeText = view.findViewById(R.id.tvUptimeText);
-        btnStart = view.findViewById(R.id.btnStartServer);
-        btnStop = view.findViewById(R.id.btnStopServer);
         tvCopyUrl = view.findViewById(R.id.tvCopyUrl);
+        tvMdnsAccessUrl = view.findViewById(R.id.tvMdnsAccessUrl);
 
-        btnStart.setOnClickListener(v -> startServer());
-        btnStop.setOnClickListener(v -> stopServer());
+        tvMemoryUsedLabel = view.findViewById(R.id.tvMemoryUsedLabel);
+        tvMemoryPercent = view.findViewById(R.id.tvMemoryPercent);
+        pbMemoryUsage = view.findViewById(R.id.pbMemoryUsage);
+        tvMemoryFreeLabel = view.findViewById(R.id.tvMemoryFreeLabel);
+        tvMemoryTotalLabel = view.findViewById(R.id.tvMemoryTotalLabel);
 
         if (tvCopyUrl != null) {
             tvCopyUrl.setOnClickListener(v -> {
                 if (getContext() != null) {
+                    String mdnsUrl = ServerConfig.getMdnsUrl(getContext());
                     ClipboardManager clipboard = (ClipboardManager) getContext().getSystemService(Context.CLIPBOARD_SERVICE);
-                    ClipData clip = ClipData.newPlainText("Server URL", "http://s4.local:9090");
+                    ClipData clip = ClipData.newPlainText("Server URL", mdnsUrl);
                     if (clipboard != null) {
                         clipboard.setPrimaryClip(clip);
-                        Toast.makeText(getContext(), "URL copiada para a área de transferência!", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(getContext(), "URL copiada: " + mdnsUrl, Toast.LENGTH_SHORT).show();
                     }
                 }
             });
@@ -88,15 +96,9 @@ public class DashboardFragment extends Fragment {
         if (ServerLogBus.getServerStartTime() > 0) {
             setOnlineUi();
         } else {
-            // Se ainda não iniciou, inicia automaticamente
+            // Se o servidor ainda não estiver em execução, inicia automaticamente
             startServer();
         }
-    }
-
-    @Override
-    public void onPause() {
-        super.onPause();
-        timerHandler.removeCallbacks(timerRunnable);
     }
 
     private void startServer() {
@@ -107,35 +109,43 @@ public class DashboardFragment extends Fragment {
         setOnlineUi();
     }
 
-    private void stopServer() {
-        if (getActivity() == null) return;
-        Intent intent = new Intent(getActivity(), MyBackendService.class);
-        getActivity().stopService(intent);
-        ServerLogBus.stopServerTimer();
-        setOfflineUi();
+    @Override
+    public void onPause() {
+        super.onPause();
+        timerHandler.removeCallbacks(timerRunnable);
     }
 
     private void setOnlineUi() {
-        String ip = NetworkUtils.getLocalIpAddress();
+        if (tvServerInfo == null) return;
         tvServerInfo.setText("Servidor Online");
         tvServerInfo.setTextColor(Color.parseColor("#30D158"));
-        String port = Environment.getProperty("server.port", "8080");
-        tvServerAddress.setText("Acesse: http://" + ip + ":" + port);
+        String mdnsUrl = getContext() != null ? ServerConfig.getMdnsUrl(getContext()) : "http://s4.local:9090";
+        tvServerAddress.setText("Acesse: " + mdnsUrl);
+        if (tvMdnsAccessUrl != null) {
+            tvMdnsAccessUrl.setText("🌐 " + mdnsUrl);
+        }
         ivStatusIcon.setColorFilter(Color.parseColor("#30D158"));
-        btnStart.setVisibility(View.GONE);
-        btnStop.setVisibility(View.VISIBLE);
     }
 
     private void setOfflineUi() {
+        if (tvServerInfo == null) return;
         tvServerInfo.setText("Servidor Desligado");
         tvServerInfo.setTextColor(Color.parseColor("#FF453A"));
-        tvServerAddress.setText("Toque abaixo para ligar");
+        tvServerAddress.setText("Ligue nas Configurações");
+        if (tvMdnsAccessUrl != null) {
+            String mdnsUrl = getContext() != null ? ServerConfig.getMdnsUrl(getContext()) : "http://s4.local:9090";
+            tvMdnsAccessUrl.setText("🌐 " + mdnsUrl);
+        }
         ivStatusIcon.setColorFilter(Color.parseColor("#FF453A"));
-        btnStop.setVisibility(View.GONE);
-        btnStart.setVisibility(View.VISIBLE);
     }
 
     private void updateMetrics() {
+        if (ServerLogBus.getServerStartTime() > 0) {
+            setOnlineUi();
+        } else {
+            setOfflineUi();
+        }
+
         if (tvTotalRequestsCount != null) {
             tvTotalRequestsCount.setText(String.valueOf(ServerLogBus.getRequestCount()));
         }
@@ -150,6 +160,45 @@ public class DashboardFragment extends Fragment {
             } else {
                 tvUptimeText.setText("00:00:00");
             }
+        }
+
+        updateMemoryMetrics();
+    }
+
+    private void updateMemoryMetrics() {
+        Runtime rt = Runtime.getRuntime();
+        long totalMemory = rt.totalMemory();
+        long freeMemory = rt.freeMemory();
+        long usedMemory = totalMemory - freeMemory;
+
+        long usedMb = usedMemory / (1024 * 1024);
+        long freeMb = freeMemory / (1024 * 1024);
+        long totalMb = totalMemory / (1024 * 1024);
+
+        int percent = totalMb > 0 ? (int) ((usedMb * 100) / totalMb) : 0;
+        if (percent > 100) percent = 100;
+
+        if (tvMemoryUsedLabel != null) {
+            tvMemoryUsedLabel.setText(usedMb + " MB usados");
+        }
+        if (tvMemoryPercent != null) {
+            tvMemoryPercent.setText(percent + "%");
+        }
+        if (pbMemoryUsage != null) {
+            pbMemoryUsage.setProgress(percent);
+            if (percent > 85) {
+                pbMemoryUsage.setProgressTintList(android.content.res.ColorStateList.valueOf(Color.parseColor("#FF453A")));
+            } else if (percent > 65) {
+                pbMemoryUsage.setProgressTintList(android.content.res.ColorStateList.valueOf(Color.parseColor("#FF9F0A")));
+            } else {
+                pbMemoryUsage.setProgressTintList(android.content.res.ColorStateList.valueOf(Color.parseColor("#0A84FF")));
+            }
+        }
+        if (tvMemoryFreeLabel != null) {
+            tvMemoryFreeLabel.setText("Livre: " + freeMb + " MB");
+        }
+        if (tvMemoryTotalLabel != null) {
+            tvMemoryTotalLabel.setText("Total Alocado: " + totalMb + " MB");
         }
     }
 }

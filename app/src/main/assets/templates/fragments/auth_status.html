@@ -1,0 +1,13 @@
+{{#isAuthenticated}}
+<div class="user-profile-pill">
+    <div class="avatar-circle">{{userInitial}}</div>
+    <div class="user-meta">
+        <span class="user-name">{{userName}}</span>
+        <span class="user-role">{{userRole}}</span>
+    </div>
+    <button class="logout-btn" onclick="logout()" title="Sair">✕</button>
+</div>
+{{/isAuthenticated}}
+{{^isAuthenticated}}
+<button class="btn-tetrisly btn-outline" onclick="logout()">🔑 Entrar</button>
+{{/isAuthenticated}}

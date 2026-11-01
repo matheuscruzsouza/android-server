@@ -29,6 +29,8 @@ public class UsersFragment extends Fragment {
     private final java.util.concurrent.ExecutorService executor = java.util.concurrent.Executors.newSingleThreadExecutor();
     private RecyclerView rvUsers;
     private TextView tvEmptyUsers;
+    private TextView tvUsersTotalCount;
+    private TextView tvUsersAdminsCount;
     private UserAdminAdapter adapter;
     private IamService iamService;
 
@@ -39,6 +41,8 @@ public class UsersFragment extends Fragment {
 
         rvUsers = view.findViewById(R.id.rvUsers);
         tvEmptyUsers = view.findViewById(R.id.tvEmptyUsers);
+        tvUsersTotalCount = view.findViewById(R.id.tvUsersTotalCount);
+        tvUsersAdminsCount = view.findViewById(R.id.tvUsersAdminsCount);
         Button btnCreateUser = view.findViewById(R.id.btnCreateUser);
 
         if (getContext() != null) {
@@ -56,7 +60,10 @@ public class UsersFragment extends Fragment {
 
             @Override
             public void onManageUser(IamUser user) {
-                showManageUserDialog(user);
+                if (getActivity() == null || user == null) return;
+                Intent intent = new Intent(getActivity(), com.github.matheuscruzsouza.androidserver.UserDetailsActivity.class);
+                intent.putExtra(com.github.matheuscruzsouza.androidserver.UserDetailsActivity.EXTRA_ACCESS_KEY, user.getAccessKey());
+                startActivity(intent);
             }
         });
         rvUsers.setAdapter(adapter);
@@ -85,10 +92,21 @@ public class UsersFragment extends Fragment {
                     if (list == null || list.isEmpty()) {
                         tvEmptyUsers.setVisibility(View.VISIBLE);
                         rvUsers.setVisibility(View.GONE);
+                        if (tvUsersTotalCount != null) tvUsersTotalCount.setText("0");
+                        if (tvUsersAdminsCount != null) tvUsersAdminsCount.setText("0");
                     } else {
                         tvEmptyUsers.setVisibility(View.GONE);
                         rvUsers.setVisibility(View.VISIBLE);
                         adapter.updateData(list);
+
+                        int activeCount = 0;
+                        int adminCount = 0;
+                        for (IamUser u : list) {
+                            if (u.isEnabled()) activeCount++;
+                            if ("Admin".equalsIgnoreCase(u.getPolicy())) adminCount++;
+                        }
+                        if (tvUsersTotalCount != null) tvUsersTotalCount.setText(String.valueOf(activeCount));
+                        if (tvUsersAdminsCount != null) tvUsersAdminsCount.setText(String.valueOf(adminCount));
                     }
                 });
             }
@@ -185,17 +203,39 @@ public class UsersFragment extends Fragment {
     }
 
     private void showRotateSecretDialog(IamUser user) {
-        if (getContext() == null) return;
-        android.widget.EditText input = new android.widget.EditText(getContext());
+        android.content.Context context = getContext();
+        if (context == null) return;
+        android.widget.EditText input = new android.widget.EditText(context);
         input.setHint("Nova Secret Key");
         input.setTextColor(android.graphics.Color.WHITE);
         input.setHintTextColor(android.graphics.Color.parseColor("#8E8E93"));
         input.setText("secret_" + java.util.UUID.randomUUID().toString().substring(0, 12));
 
-        new AlertDialog.Builder(getContext(), android.R.style.Theme_DeviceDefault_Dialog_Alert)
+        android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable();
+        bg.setColor(android.graphics.Color.parseColor("#2C2C2E"));
+        float density = context.getResources().getDisplayMetrics().density;
+        bg.setCornerRadius(10 * density);
+        bg.setStroke((int) (1 * density), android.graphics.Color.parseColor("#3A3A3C"));
+        input.setBackground(bg);
+        int padH = (int) (14 * density);
+        int padV = (int) (12 * density);
+        input.setPadding(padH, padV, padH, padV);
+
+        android.widget.FrameLayout container = new android.widget.FrameLayout(context);
+        int marginH = (int) (20 * density);
+        int marginT = (int) (8 * density);
+        android.widget.FrameLayout.LayoutParams params = new android.widget.FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+        );
+        params.setMargins(marginH, marginT, marginH, 0);
+        input.setLayoutParams(params);
+        container.addView(input);
+
+        new AlertDialog.Builder(context, android.R.style.Theme_DeviceDefault_Dialog_Alert)
                 .setTitle("Rotacionar Chave Secreta")
                 .setMessage("Defina a nova Secret Key para " + user.getAccessKey() + ":")
-                .setView(input)
+                .setView(container)
                 .setPositiveButton("Salvar", (dialog, which) -> {
                     String newSecret = input.getText().toString().trim();
                     if (!newSecret.isEmpty()) {

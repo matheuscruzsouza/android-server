@@ -1,8 +1,17 @@
-# AndroidServer • Showcase & Referência do nano-spring 1.6.0
+# S4 (Simple Shared Storage Service) • nano-spring 2.4.0 Showcase
 
-> **A aplicação oficial de referência ("PetClinic") do micro-framework [nano-spring](https://github.com/matheuscruzsouza/nano-spring) no Android.**
+> **Serviço de Armazenamento de Objetos e Servidor de Arquivos com compatibilidade S3 e interface Desktop Explorer no Android.**  
+> Implementação oficial de referência ("PetClinic") do micro-framework [nano-spring](https://github.com/matheuscruzsouza/nano-spring) modular.
 
-O **AndroidServer** demonstra como transformar um smartphone físico Android (testado e otimizado para o **Motorola Moto G4 Play / Android 7.1.1 API 25**) em um servidor web moderno, completo e de baixo consumo de recursos, executando endpoints RESTful, páginas dinâmicas renderizadas no dispositivo (SSR Mustache), streaming em tempo real (Server-Sent Events), uploads de arquivos (Multipart), persistência SQLite com migrações automáticas (`SqliteMigrator`), `@Repository` gerenciado, **descoberta de serviço na rede local via mDNS / DNS-SD (`MdnsHostResponder`)** e **suporte nativo a CORS (Cross-Origin Resource Sharing) com tratamento de requisições OPTIONS preflight no nano-spring 1.6.0**.
+O **S4 (Simple Shared Storage Service)** (anteriormente denominado *AndroidServer*) transforma um smartphone físico Android (testado e otimizado para o **Motorola Moto G4 Play / Android 7.1.1 API 25**) em um servidor de armazenamento de objetos leve, moderno e robusto.
+
+O projeto agora tem foco central em **Storage Compartilhado (File Server & Object Storage)**:
+1. **Desktop Explorer Web UI**: Interface web inspirada no Windows 11 Explorer e Copyparty, construída com HTMX, Tailwind CSS, SSE (Server-Sent Events) para atualizações em tempo real, suporte a temas Claro/Escuro, visualizador e player de mídia integrado e upload drag & drop.
+2. **S3 Protocol & Compatibility Gateway**: Compatibilidade nativa com o protocolo S3 na raiz (`/` e `/{bucket}/{key}`) e alias legado `/s3`, permitindo o uso direto com ferramentas oficiais como AWS CLI, MinIO Client (`mc`), rclone e SDKs S3 sem qualquer adaptação.
+3. **AWS Signature Version 4 (SigV4) & Presigned URLs**: Validação criptográfica de assinaturas SigV4 (`AWS4-HMAC-SHA256`) em headers HTTP e URLs pré-assinadas via query string (`X-Amz-Signature`), além de CORS nativo S3 e suporte a streaming ponta a ponta sem estouro de memória no Android.
+4. **Multipart Upload & Operações em Lote**: Suporte a upload dividido em staging de disco temporário e exclusão de múltiplos objetos (`DeleteObjects`).
+5. **Mini-IAM Nativo**: Controle de acesso por credenciais com chaves `AccessKey` e `SecretKey` e políticas granulares (`Admin`, `ReadOnly`, `WriteOnly`).
+6. **Arquitetura nano-spring 2.4.0**: Baseada nos módulos independentes `nano-spring-core`, `nano-spring-web`, `nano-spring-data` e `nano-spring-discovery`, com suporte a CORS nativo, resolução mDNS para acesso direto via `http://s4.local:9090`, documentação OpenAPI/Swagger e persistência SQLite com migrações versionadas.
 
 ---
 
@@ -10,12 +19,15 @@ O **AndroidServer** demonstra como transformar um smartphone físico Android (te
 
 | Funcionalidade | Descrição | Componente nano-spring / Android |
 | :--- | :--- | :--- |
-| **Copyparty Web UI & File Server** | Interface web moderna para upload via drag & drop, listagem e download de arquivos | `@RestController("/party")`, `StorageManager` |
-| **S3 Subset API (AWS Compatible)** | Endpoints compatíveis com subconjunto S3 (`ListBuckets`, `ListObjectsV2`, `PutObject`, `GetObject`, `DeleteObject`) | `@RestController("/s3")`, `FileUtils` |
-| **Página Inicial Interativa** | Dashboard dark-mode com métricas e catálogo de APIs em `GET /` e `GET /web` | `@RestController("")`, `ModelAndView("index")` |
-| **CORS Nativo (1.6.0)** | Suporte completo a requisições Cross-Origin e tratamento automático de `OPTIONS` preflight | `CorsConfiguration`, `nano.cors.*` |
-| **Resolução de Host mDNS (1.5.0+)** | Acesso direto pelo navegador via `http://androidserver.local:9090` sem configurar DNS | `MdnsHostResponder`, `nano.nsd.host-resolution=true` |
-| **Descoberta de Serviço (1.4.0+)** | Anúncio do serviço na rede local via mDNS / DNS-SD Zeroconf | `NsdServiceManager`, `nano.nsd.enabled=true` |
+| **S4 Desktop Explorer & File Server** | Interface web desktop com design Explorer (Windows 11), visualização de arquivos, player de mídia e upload drag & drop | `@RestController("")`, `StorageManager` |
+| **S3 Gateway & Protocolo na Raiz** | Endpoints nativos na raiz (`/{bucket}/{key}`), `HEAD Bucket`, `HEAD Object`, `ListObjectsV2` com cursor e alias `/s3` | `S3RequestDispatcher`, `FileUtils`, `ByteRangeHandler` |
+| **AWS SigV4 & Presigned URLs** | Validação de assinatura AWS Signature Version 4 em headers e query parameters (`X-Amz-Signature`) | `SigV4Signer`, `IamService` |
+| **Multipart Upload & Operações em Lote** | Upload dividido com staging em disco sem estouro de RAM e `DeleteObjects` em lote | `MultipartUploadManager`, `S3RequestDispatcher` |
+| **Mini-IAM & Segurança S3** | Gerenciamento de credenciais com políticas de acesso (`Admin`, `ReadOnly`, `WriteOnly`) | `IamSecurityInterceptor`, `IamService`, `IamUserRepository` |
+| **OpenAPI / Swagger UI** | Especificação de API e documentação interativa gerada automaticamente | `nano-spring-web`, `/swagger-ui.html`, `/v3/api-docs` |
+| **CORS Nativo S3 & API** | Suporte completo a requisições Cross-Origin e tratamento de preflight `OPTIONS` | `CorsConfiguration`, `S3RequestDispatcher` |
+| **Resolução de Host mDNS** | Acesso direto pelo navegador via `http://s4.local:9090` sem configurar DNS | `MdnsHostResponder`, `nano.nsd.host-resolution=true` |
+| **Descoberta de Serviço** | Anúncio do serviço na rede local via mDNS / DNS-SD Zeroconf | `NsdServiceManager`, `nano.nsd.enabled=true` |
 | **REST API com JSON** | Endpoints serializados automaticamente para JSON | `@RestController("/api/users")`, `@RequestBody`, `@PathVariable` |
 | **Server-Side Rendering (SSR)** | Páginas HTML dinâmicas com JMustache compiladas no dispositivo | `ModelAndView("user_profile")`, assets HTML/CSS/JS |
 | **Server-Sent Events (SSE)** | Streaming contínuo de telemetria (Uptime, requisições, memória) em tempo real | `SseEmitter` em `/api/events` (`text/event-stream`) |
@@ -34,10 +46,11 @@ O **AndroidServer** demonstra como transformar um smartphone físico Android (te
 - **Aparelho Alvo:** Motorola Moto G4 Play (`harpia`)
 - **Android OS:** 7.1.1 Nougat (API 25)
 - **Porta Padrão:** `9090` (definida em `assets/application.properties`)
+- **Host mDNS Local:** `http://s4.local:9090/`
 - **Gradle:** 8.6
 - **Android Gradle Plugin (AGP):** 8.2.2 (estável e compatível com Java 17)
 - **Java:** OpenJDK 17 (`JavaVersion.VERSION_11` bytecode target)
-- **Versão nano-spring:** `1.6.0`
+- **Versão nano-spring:** `2.4.0` (módulos `core`, `web`, `data`, `discovery`)
 
 ---
 
@@ -77,9 +90,9 @@ Abra seu navegador em:
 
 ## 📡 Catálogo de Endpoints e Exemplos de Uso
 
-### 1. Dashboard, Web (SSR) e Copyparty File Server
-- **`GET /` ou `GET /web`**: Landing page com telemetria ao vivo, indicador mDNS, catálogo e upload multipart.
-- **`GET /party`**: Interface Web Copyparty dark-mode moderna com suporte a drag & drop, progresso de upload, listagem e download.
+### 1. S4 Desktop Explorer, Web (SSR) e File Server
+- **`GET /` ou `GET /web`**: Interface principal S4 Desktop Explorer inspirada no Windows 11 com barra lateral de navegação, upload drag & drop, pré-visualização de arquivos e telemetria SSE ao vivo.
+- **`GET /party`**: Interface Web File Server integrada com upload, listagem e download simplificado.
 - **`GET /party/api/files`**: Lista arquivos do bucket padrão em JSON.
 - **`POST /party/upload`**: Envio de arquivos via formulário web multipart para o armazenamento local.
 - **`GET /party/download/:filename`**: Download de arquivos salvos.
@@ -88,8 +101,8 @@ Abra seu navegador em:
 - **`GET /web/download/:fileId`**: Download direto do arquivo salvo.
 - **`GET /web/html`**: Demonstração de resposta HTML pura direta sem template.
 
-### 2. S3 Subset API (Compatível com AWS CLI, Rclone, Cyberduck) & Mini-IAM
-O endpoint `/s3` e o catálogo de credenciais `/api/iam` são protegidos pelo **Mini-IAM Persistente** do AndroidServer com suporte a políticas (`Admin`, `ReadOnly`, `WriteOnly`):
+### 2. S3 Compatible API (AWS CLI, Rclone, Cyberduck) & Mini-IAM
+O endpoint `/s3` e o catálogo de credenciais `/api/iam` são protegidos pelo **Mini-IAM Persistente** do S4 com suporte a políticas (`Admin`, `ReadOnly`, `WriteOnly`):
 
 - **Credenciais Padrão Pré-carregadas:**
   - `Admin`: `AKIA_ADMIN_ANDROID` / `secret_admin_super_key_2026`
@@ -133,22 +146,35 @@ O endpoint `/s3` e o catálogo de credenciais `/api/iam` são protegidos pelo **
        -d '{"name":"Novo Bot","accessKey":"AKIA_BOT_01","secretKey":"bot_secret_xyz","policy":"ReadOnly"}'
   ```
 
-#### Uso com o AWS CLI
-Configure o AWS CLI com as credenciais do Mini-IAM (`aws configure`):
-- AWS Access Key ID: `AKIA_ADMIN_ANDROID`
-- AWS Secret Access Key: `secret_admin_super_key_2026`
-- Default region name: `us-east-1`
+#### Uso com o AWS CLI (Protocolo Nativo na Raiz)
+Configure o profile `s4` no seu AWS CLI (`aws configure --profile s4`):
+- **AWS Access Key ID**: sua chave de acesso IAM (ex.: `AKTEST`)
+- **AWS Secret Access Key**: sua chave secreta IAM
+- **Default region name**: `us-east-1`
 
 ```bash
-# Listar arquivos no bucket 'default'
-aws --endpoint-url http://localhost:9090/s3 s3 ls s3://default/
+ENDPOINT="http://localhost:9090"
 
-# Upload de arquivo
-aws --endpoint-url http://localhost:9090/s3 s3 cp ./video.mp4 s3://default/video.mp4
+# 1. Verificar se o bucket existe (HEAD Bucket)
+aws --profile s4 --endpoint-url "$ENDPOINT" s3api head-bucket --bucket default
 
-# Download de arquivo
-aws --endpoint-url http://localhost:9090/s3 s3 cp s3://default/video.mp4 ./video_baixado.mp4
+# 2. Listar arquivos no bucket usando ListObjectsV2
+aws --profile s4 --endpoint-url "$ENDPOINT" s3api list-objects-v2 --bucket default
+
+# 3. Upload de arquivo via streaming direto
+aws --profile s4 --endpoint-url "$ENDPOINT" s3 cp ./video.mp4 s3://default/video.mp4
+
+# 4. Upload multipart automático para grandes arquivos (>8MB)
+aws --profile s4 --endpoint-url "$ENDPOINT" s3 cp ./arquivo_grande.bin s3://default/arquivo_grande.bin
+
+# 5. Download de arquivo com integridade ETag
+aws --profile s4 --endpoint-url "$ENDPOINT" s3 cp s3://default/video.mp4 ./video_baixado.mp4
+
+# 6. Excluir arquivo
+aws --profile s4 --endpoint-url "$ENDPOINT" s3 rm s3://default/video.mp4
 ```
+
+> 📖 **Guia de Testes Completo**: Para instruções com **rclone**, **MinIO Client (`mc`)** e Presigned URLs, consulte [`docs/S3-COMPLIANCE-TESTS.md`](docs/S3-COMPLIANCE-TESTS.md).
 
 ### 3. REST API (JSON)
 - **`GET /health`**: Verificação de integridade e injeção de `@Value`.
@@ -174,17 +200,17 @@ aws --endpoint-url http://localhost:9090/s3 s3 cp s3://default/video.mp4 ./video
        -d '{"name":"Novo Usuario","username":"novouser"}'
   ```
 
-### 3. Descoberta de Serviço & Resolução de Host mDNS (1.5.0+)
-- **`GET /api/discovery/nsd`**: Consulta status de registro no mDNS / DNS-SD Zeroconf e resolução de Host A para navegadores (`androidserver.local`).
+### 4. Descoberta de Serviço & Resolução de Host mDNS
+- **`GET /api/discovery/nsd`**: Consulta status de registro no mDNS / DNS-SD Zeroconf e resolução de Host A para navegadores (`s4.local`).
   ```bash
   curl -i http://localhost:9090/api/discovery/nsd
   ```
   Ou acesse diretamente pelo navegador em qualquer dispositivo na rede Wi-Fi:
   ```text
-  http://androidserver.local:9090/
+  http://s4.local:9090/
   ```
 
-### 4. Suporte a CORS (Cross-Origin Resource Sharing - Novo no 1.6.0)
+### 5. Suporte a CORS (Cross-Origin Resource Sharing)
 - **`GET /api/config/cors`**: Consulta as políticas de CORS ativas definidas em `application.properties`.
   ```bash
   curl -i http://localhost:9090/api/config/cors
@@ -197,7 +223,7 @@ aws --endpoint-url http://localhost:9090/s3 s3 cp s3://default/video.mp4 ./video
   ```
   Retorna `HTTP 200 OK` com os cabeçalhos `Access-Control-Allow-Origin: *`, `Access-Control-Allow-Methods`, etc.
 
-### 5. Banco de Dados SQLite & Migrações Nativas
+### 6. Banco de Dados SQLite & Migrações Nativas
 - **`GET /api/database/migrations`**: Histórico das migrações SQL aplicadas pelo `SqliteMigrator`.
   ```bash
   curl -i http://localhost:9090/api/database/migrations
@@ -207,13 +233,13 @@ aws --endpoint-url http://localhost:9090/s3 s3 cp s3://default/video.mp4 ./video
   curl -i http://localhost:9090/api/database/events
   ```
 
-### 5. Server-Sent Events (SSE)
+### 7. Server-Sent Events (SSE)
 - **`GET /api/events`**: Stream em tempo real de telemetria do servidor.
   ```bash
   curl -N http://localhost:9090/api/events
   ```
 
-### 6. Upload de Arquivo Multipart
+### 8. Upload de Arquivo Multipart
 - **`POST /web/upload`**:
   ```bash
   curl -i -F "userId=1" -F "documento=@meu_arquivo.pdf" http://localhost:9090/web/upload
@@ -225,30 +251,37 @@ aws --endpoint-url http://localhost:9090/s3 s3 cp s3://default/video.mp4 ./video
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                    Navegador Web / Cliente HTTP                 │
+│     Navegador Web (S4 Explorer) / AWS CLI / Rclone / S3 SDKs    │
 └───────────────┬───────────────────────────────▲─────────────────┘
-                │ Requisição HTTP (:9090)       │ Resposta (HTML / JSON / SSE)
+                │ Requisição HTTP (:9090)       │ Resposta (HTML / JSON / XML S3 / SSE)
 ┌───────────────▼───────────────────────────────┴─────────────────┐
 │                   MyBackendService (Android Service)            │
 │  ┌───────────────────────────────────────────────────────────┐  │
 │  │             nano-spring Server (NanoHTTPD)                │  │
+│  │  - Módulos: core, web, data, discovery (2.4.0)            │  │
 │  │  - Roteamento e Injeção (@RestController, @Autowired)     │  │
+│  │  - IAM Security Interceptor (Autenticação AWS4 / Bearer)  │  │
+│  │  - Motor de Armazenamento S3 & FileUtils                  │  │
 │  │  - JMustache Template Engine (assets/templates/)          │  │
 │  │  - SseEmitter (Streaming de Eventos / Telemetria)         │  │
-│  │  - NsdServiceManager (mDNS / DNS-SD Zeroconf no 1.4.0)    │  │
+│  │  - NsdServiceManager (mDNS / Resolução s4.local)          │  │
 │  │  - SqliteMigrator (assets/db/migration/V*__*.sql)         │  │
 │  │  - Handler de Arquivos Estáticos (assets/static/)         │  │
 │  └───────┬────────────────────┬────────────────────┬─────────┘  │
 │          │                    │                    │            │
 │    ┌─────▼──────┐       ┌─────▼──────┐       ┌─────▼──────┐     │
-│    │UserService │       │FileService │       │EventRepo   │     │
-│    │ (@Service) │       │ (@Service) │       │(@Repository│     │
+│    │ IamService │       │StorageMgr  │       │UserService │     │
+│    │ (@Service) │       │(Singletons)│       │ (@Service) │     │
 │    └─────┬──────┘       └─────┬──────┘       └─────┬──────┘     │
 │          │                    │                    │            │
-│    ┌─────▼────────────────────▼─────┐        ┌─────▼──────────┐ │
-│    │  AppDatabase (Room SQLite v3)  │        │Native SQLite DB│ │
-│    │    - UserDao    - UserFileDao  │        │Server.getDb()  │ │
-│    └────────────────────────────────┘        └────────────────┘ │
+│    ┌─────▼──────┐       ┌─────▼──────┐       ┌─────▼──────────┐ │
+│    │IamUserRepo │       │File Storage│       │  AppDatabase   │ │
+│    │(@Repository│       │(App Sandbox│       │  (Room SQLite) │ │
+│    └─────┬──────┘       │  / Buckets)│       └────────────────┘ │
+│          │              └────────────┘                          │
+│    ┌─────▼───────────────────────────┐                          │
+│    │ Native SQLite DB (V1..V3 IAM)   │                          │
+│    └─────────────────────────────────┘                          │
 │  Notificação Foreground: Uptime, IP, Requisições em tempo real  │
 └─────────────────────────────────────────────────────────────────┘
 ```

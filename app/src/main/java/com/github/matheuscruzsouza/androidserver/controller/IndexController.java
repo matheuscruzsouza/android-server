@@ -22,6 +22,7 @@ import com.github.matheuscruzsouza.nanospring.annotation.PostMethod;
 import com.github.matheuscruzsouza.nanospring.annotation.RequestParam;
 import com.github.matheuscruzsouza.nanospring.annotation.RestController;
 import com.github.matheuscruzsouza.nanospring.annotation.UploadedFile;
+import com.github.matheuscruzsouza.nanospring.openapi.annotation.Hidden;
 import com.github.matheuscruzsouza.nanospring.battery.BatteryHelper;
 import com.github.matheuscruzsouza.nanospring.battery.BatteryStatus;
 import com.github.matheuscruzsouza.nanospring.cors.CorsConfiguration;
@@ -29,6 +30,7 @@ import com.github.matheuscruzsouza.nanospring.discovery.NsdServiceManager;
 import com.github.matheuscruzsouza.nanospring.server.Environment;
 import com.github.matheuscruzsouza.nanospring.server.Server;
 import com.github.matheuscruzsouza.nanospring.sse.SseEmitter;
+import com.github.matheuscruzsouza.nanospring.storage.ByteRangeHandler;
 import com.github.matheuscruzsouza.nanospring.ui.ModelAndView;
 
 import java.io.File;
@@ -45,12 +47,16 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
-import fi.iki.elonen.NanoHTTPD;
 import fi.iki.elonen.NanoHTTPD.IHTTPSession;
 import fi.iki.elonen.NanoHTTPD.Response;
-import fi.iki.elonen.NanoHTTPD.Response.Status;
 
+@Hidden
 @RestController("")
 public class IndexController {
 
@@ -74,6 +80,14 @@ public class IndexController {
 
     @Autowired
     private StorageManager storageManager;
+
+    private static final List<SseEmitter> activeEmitters = new CopyOnWriteArrayList<>();
+    private static final AtomicBoolean sseBroadcasterStarted = new AtomicBoolean(false);
+    private static final ScheduledExecutorService sseExecutor = Executors.newSingleThreadScheduledExecutor(r -> {
+        Thread t = new Thread(r, "sse-broadcaster-thread");
+        t.setDaemon(true);
+        return t;
+    });
 
     private ServerEventRepository getEventRepository() {
         if (eventRepository == null) {
@@ -159,84 +173,6 @@ public class IndexController {
         return "color-default";
     }
 
-    private String getFileSvg(String filename, boolean isDir) {
-        if (isDir) {
-            // Pasta em perspectiva 3D isométrica aberta/linha grossa (idêntica ao print de referência "Projeto_Frontend_v2")
-            return "<svg viewBox='0 0 48 48' class='win-icon' fill='none' stroke='#FFFFFF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>" +
-                    "<path d='M6 16L18 8L36 12L24 20Z'/>" +
-                    "<path d='M6 16V36L24 44V20L6 16Z'/>" +
-                    "<path d='M24 44L42 36V14L24 20'/>" +
-                    "<path d='M18 8V14'/>" +
-                    "</svg>";
-        }
-        String lower = filename != null ? filename.toLowerCase(Locale.ROOT) : "";
-        if (lower.endsWith(".pdf")) {
-            // PDF estilo Windows (folha com dobra superior e grelha/linhas de texto verticais conforme "Contrato_Servicos.pdf")
-            return "<svg viewBox='0 0 48 48' class='win-icon' fill='none' stroke='#FFFFFF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>" +
-                    "<path d='M10 6H30L40 16V42H10V6Z'/>" +
-                    "<path d='M30 6V16H40'/>" +
-                    "<rect x='16' y='22' width='16' height='14'/>" +
-                    "<line x1='20' y1='22' x2='20' y2='36'/>" +
-                    "<line x1='24' y1='22' x2='24' y2='36'/>" +
-                    "<line x1='28' y1='22' x2='28' y2='36'/>" +
-                    "</svg>";
-        } else if (lower.endsWith(".doc") || lower.endsWith(".docx")) {
-            // DOCX em perspectiva com linhas horizontais estilizadas
-            return "<svg viewBox='0 0 48 48' class='win-icon' fill='none' stroke='#FFFFFF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>" +
-                    "<path d='M14 6L36 10L32 42L10 38Z'/>" +
-                    "<line x1='16' y1='15' x2='30' y2='17'/>" +
-                    "<line x1='15' y1='21' x2='29' y2='23'/>" +
-                    "<line x1='14' y1='27' x2='28' y2='29'/>" +
-                    "<line x1='13' y1='33' x2='27' y2='35'/>" +
-                    "</svg>";
-        } else if (lower.endsWith(".xls") || lower.endsWith(".xlsx") || lower.endsWith(".csv")) {
-            // Planilha Excel estilo Windows com colunas de gráfico de barras
-            return "<svg viewBox='0 0 48 48' class='win-icon' fill='none' stroke='#FFFFFF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>" +
-                    "<rect x='8' y='8' width='32' height='32'/>" +
-                    "<rect x='13' y='22' width='4' height='14'/>" +
-                    "<rect x='21' y='14' width='4' height='22'/>" +
-                    "<rect x='29' y='18' width='4' height='18'/>" +
-                    "</svg>";
-        } else if (lower.endsWith(".key") || lower.endsWith(".ppt") || lower.endsWith(".pptx")) {
-            // Apresentação/Filme com rolo de slides e tela
-            return "<svg viewBox='0 0 48 48' class='win-icon' fill='none' stroke='#FFFFFF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>" +
-                    "<rect x='8' y='18' width='32' height='22'/>" +
-                    "<circle cx='18' cy='12' r='4'/>" +
-                    "<circle cx='30' cy='12' r='4'/>" +
-                    "<polygon points='20 25 30 29 20 33 20 25'/>" +
-                    "</svg>";
-        } else if (lower.endsWith(".zip") || lower.endsWith(".rar") || lower.endsWith(".7z") || lower.endsWith(".tar") || lower.endsWith(".gz") || lower.endsWith(".apk")) {
-            // Arquivo compactado com morsa/prensa (idêntico ao clássico do Windows "Assets_Icons.zip")
-            return "<svg viewBox='0 0 48 48' class='win-icon' fill='none' stroke='#FFFFFF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>" +
-                    "<rect x='16' y='16' width='16' height='20'/>" +
-                    "<line x1='12' y1='10' x2='36' y2='10' stroke-width='3'/>" +
-                    "<line x1='24' y1='10' x2='24' y2='16'/>" +
-                    "<line x1='12' y1='40' x2='36' y2='40' stroke-width='3'/>" +
-                    "<line x1='24' y1='36' x2='24' y2='40'/>" +
-                    "<circle cx='12' cy='10' r='2' fill='#FFFFFF'/>" +
-                    "<circle cx='36' cy='10' r='2' fill='#FFFFFF'/>" +
-                    "<line x1='16' y1='22' x2='32' y2='22'/>" +
-                    "<line x1='16' y1='28' x2='32' y2='28'/>" +
-                    "</svg>";
-        } else if (lower.endsWith(".png") || lower.endsWith(".jpg") || lower.endsWith(".jpeg") || lower.endsWith(".gif") || lower.endsWith(".webp") || lower.endsWith(".svg")) {
-            // Imagem estilo moldura de quadro clássica do Windows ("Screenshot_Layout.png")
-            return "<svg viewBox='0 0 48 48' class='win-icon' fill='none' stroke='#FFFFFF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>" +
-                    "<rect x='10' y='8' width='28' height='32' rx='2'/>" +
-                    "<circle cx='24' cy='18' r='5'/>" +
-                    "<path d='M16 34C16 28 20 26 24 26C28 26 32 28 32 34'/>" +
-                    "</svg>";
-        } else {
-            // Documento de texto/genérico com linhas ("notas_reuniao.txt")
-            return "<svg viewBox='0 0 48 48' class='win-icon' fill='none' stroke='#FFFFFF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>" +
-                    "<path d='M12 6H28L36 14V42H12V6Z'/>" +
-                    "<path d='M28 6V14H36'/>" +
-                    "<line x1='18' y1='20' x2='30' y2='20'/>" +
-                    "<line x1='18' y1='26' x2='30' y2='26'/>" +
-                    "<line x1='18' y1='32' x2='26' y2='32'/>" +
-                    "</svg>";
-        }
-    }
-
     @GetMethod("/")
     public ModelAndView getRoot(IHTTPSession session) {
         return buildIndexModel(session);
@@ -248,9 +184,12 @@ public class IndexController {
     }
 
     private ModelAndView buildIndexModel(IHTTPSession session) {
-        String ip = NetworkUtils.getLocalIpAddress();
         String port = Environment.getProperty("server.port", "9090");
-        String serverUrl = "http://" + ip + ":" + port;
+        String scheme = Boolean.parseBoolean(Environment.getProperty("server.ssl.enabled", "false")) ? "https" : "http";
+        String nsdHost = (nsdServiceManager != null && nsdServiceManager.getHostResponder() != null)
+                ? nsdServiceManager.getHostResponder().getFullLocalHostname()
+                : (Environment.getProperty("nano.nsd.name", "s4").toLowerCase() + ".local");
+        String serverUrl = scheme + "://" + nsdHost + ":" + port;
 
         List<User> users = getUserService().getUsers();
         if (users == null) users = Collections.emptyList();
@@ -336,6 +275,10 @@ public class IndexController {
             folderList.add(defFolder);
         }
 
+        List<Map<String, Object>> sidebarFolders = isAuthenticated
+                ? buildSidebarFolders(authUser, "", "")
+                : Collections.emptyList();
+
         return new ModelAndView("index")
                 .addObject("appName", "S4")
                 .addObject("frameworkName", "nano-spring")
@@ -343,7 +286,7 @@ public class IndexController {
                 .addObject("deviceModel", Build.MANUFACTURER + " " + Build.MODEL)
                 .addObject("androidVersion", Build.VERSION.RELEASE)
                 .addObject("sdkInt", String.valueOf(Build.VERSION.SDK_INT))
-                .addObject("ipAddress", ip)
+                .addObject("ipAddress", nsdHost)
                 .addObject("port", port)
                 .addObject("serverUrl", serverUrl)
                 .addObject("uptime", uptime)
@@ -357,6 +300,7 @@ public class IndexController {
                 .addObject("nsdEnabled", nsdRegistered || hostResponderRunning)
                 .addObject("nsdName", nsdName)
                 .addObject("nsdHostName", nsdHostName)
+                .addObject("scheme", scheme)
                 .addObject("hostResponderRunning", hostResponderRunning)
                 .addObject("corsEnabled", corsActive)
                 .addObject("hasUsers", isAuthenticated && userCount > 0)
@@ -364,6 +308,7 @@ public class IndexController {
                 .addObject("users", isAuthenticated ? users : Collections.emptyList())
                 .addObject("files", isAuthenticated ? files : Collections.emptyList())
                 .addObject("folders", folderList)
+                .addObject("sidebarFolders", sidebarFolders)
                 .addObject("batteryLevel", String.valueOf(batteryLevel))
                 .addObject("isCharging", isCharging)
                 .addObject("batteryTemp", String.format(Locale.US, "%.1f", battery.getTemperatureCelsius()))
@@ -375,41 +320,87 @@ public class IndexController {
                 .addObject("userInitial", userInitial);
     }
 
-    // HTMX Fragment: Renders folder pills
-    @GetMethod("/web/fragments/folders")
-    public Response getFoldersFragment(IHTTPSession session) {
+    private List<Map<String, Object>> buildSidebarFolders(IamUser user, String activeBucket, String activePath) {
+        List<Map<String, Object>> folders = new ArrayList<>();
         StorageManager sm = getStorageManager();
-        StringBuilder sb = new StringBuilder();
+        if (sm == null || user == null) return folders;
 
-        IamUser user = resolveAuthenticatedUser(session);
-        if (sm != null && user != null) {
-            List<File> buckets = sm.listBucketsForUser(user);
-            if (!buckets.isEmpty()) {
-                for (File b : buckets) {
-                    List<S3ObjectItem> objs = sm.listObjectsForUser(user, b.getName());
-                    int count = objs.size();
-                    sb.append("<div class='folder-card' onclick=\"filterBucket('").append(b.getName()).append("')\">");
-                    sb.append("<div class='folder-icon'>📁</div>");
-                    sb.append("<div class='folder-info'>");
-                    sb.append("<span class='folder-name'>").append(b.getName()).append("</span>");
-                    sb.append("<span class='folder-count'>").append(count).append("</span>");
-                    sb.append("</div></div>");
-                }
-            } else {
-                String defName = sm.getUserDefaultBucket(user);
-                sb.append("<div class='folder-card' onclick=\"filterBucket('").append(defName).append("')\"><div class='folder-icon'>📁</div><div class='folder-info'><span class='folder-name'>").append(defName).append("</span><span class='folder-count'>0</span></div></div>");
+        boolean isAdmin = "Admin".equalsIgnoreCase(user.getPolicy()) || "*".equals(user.getPolicy());
+        String defaultBucket = sm.getUserDefaultBucket(user);
+
+        List<File> bucketDirs = sm.listBucketsForUser(user);
+        if (bucketDirs == null || bucketDirs.isEmpty()) {
+            File def = sm.getBucketDir(defaultBucket);
+            bucketDirs = Collections.singletonList(def);
+        }
+
+        // Filtra para garantir que apenas diretórios raiz de buckets únicos sejam iterados
+        Map<String, File> uniqueBuckets = new HashMap<>();
+        for (File b : bucketDirs) {
+            if (b.getParentFile() != null && b.getParentFile().equals(sm.getRootDir())) {
+                uniqueBuckets.putIfAbsent(b.getName(), b);
+            } else if (!isAdmin && b.getName().equals(defaultBucket)) {
+                uniqueBuckets.putIfAbsent(b.getName(), b);
             }
         }
-        sb.append("<button class='folder-card add-folder-btn' onclick='promptNewFolder()'>");
-        sb.append("<span class='add-icon'>+</span> <span class='folder-name'>Add new folder</span>");
-        sb.append("</button>");
+        if (uniqueBuckets.isEmpty()) {
+            uniqueBuckets.put(defaultBucket, sm.getBucketDir(defaultBucket));
+        }
 
-        return NanoHTTPD.newFixedLengthResponse(Status.OK, "text/html; charset=UTF-8", sb.toString());
+        List<File> sortedBuckets = new ArrayList<>(uniqueBuckets.values());
+        sortedBuckets.sort((f1, f2) -> f1.getName().compareToIgnoreCase(f2.getName()));
+
+        for (File b : sortedBuckets) {
+            String bName = b.getName();
+            boolean isCurBucket = (activeBucket != null && !activeBucket.isEmpty())
+                    ? bName.equalsIgnoreCase(activeBucket)
+                    : bName.equalsIgnoreCase(defaultBucket);
+
+            Map<String, Object> rootFolder = new HashMap<>();
+            rootFolder.put("bucket", bName);
+            rootFolder.put("path", "");
+            rootFolder.put("displayName", bName.toUpperCase(Locale.ROOT));
+            rootFolder.put("isRoot", true);
+            rootFolder.put("paddingLeft", 10);
+            rootFolder.put("isActive", isCurBucket && (activePath == null || activePath.isEmpty()));
+            folders.add(rootFolder);
+
+            // Subpastas diretas do bucket com indentação visual via padding
+            File[] subs = b.listFiles(File::isDirectory);
+            if (subs != null) {
+                List<File> subList = new ArrayList<>();
+                for (File s : subs) subList.add(s);
+                subList.sort((f1, f2) -> f1.getName().compareToIgnoreCase(f2.getName()));
+
+                for (File s : subList) {
+                    Map<String, Object> subMap = new HashMap<>();
+                    subMap.put("bucket", bName);
+                    subMap.put("path", s.getName());
+                    subMap.put("displayName", s.getName());
+                    subMap.put("isRoot", false);
+                    subMap.put("paddingLeft", 26);
+                    subMap.put("isActive", isCurBucket && s.getName().equals(activePath));
+                    folders.add(subMap);
+                }
+            }
+        }
+        return folders;
     }
 
-    // HTMX Fragment: Renders unified Windows Explorer style files and folders list
+    // HTMX Fragment: Renders sidebar folders list
+    @GetMethod("/web/fragments/sidebar-folders")
+    public ModelAndView getSidebarFoldersFragment(IHTTPSession session) {
+        IamUser user = resolveAuthenticatedUser(session);
+        String bucketFilter = session.getParms() != null ? session.getParms().get("bucket") : null;
+        String pathFilter = session.getParms() != null ? session.getParms().get("path") : null;
+        List<Map<String, Object>> folders = buildSidebarFolders(user, bucketFilter, pathFilter);
+
+        return new ModelAndView("fragments/sidebar_folders")
+                .addObject("folders", folders);
+    }
+
     @GetMethod("/web/fragments/files")
-    public Response getFilesFragment(IHTTPSession session) {
+    public ModelAndView getFilesFragment(IHTTPSession session) {
         String bucketFilter = session.getParms() != null ? session.getParms().get("bucket") : null;
         if (bucketFilter == null) bucketFilter = "";
         String pathFilter = session.getParms() != null ? session.getParms().get("path") : null;
@@ -417,21 +408,24 @@ public class IndexController {
         while (pathFilter.startsWith("/")) pathFilter = pathFilter.substring(1);
         while (pathFilter.endsWith("/")) pathFilter = pathFilter.substring(0, pathFilter.length() - 1);
 
+        ModelAndView mav = new ModelAndView("fragments/files");
+
         IamUser user = resolveAuthenticatedUser(session);
         if (user == null) {
-            String html = "<div class='fm-empty-state'>" +
-                    "<div class='fm-empty-icon'>🔒</div>" +
-                    "<h3>Acesso Restrito</h3>" +
-                    "<p>Conecte-se com sua chave IAM para visualizar e interagir com os arquivos.</p>" +
-                    "<button class='btn-tetrisly btn-primary' onclick='logout()'>Ir para Login</button>" +
-                    "</div>";
-            return NanoHTTPD.newFixedLengthResponse(Status.OK, "text/html; charset=UTF-8", html);
+            return mav.addObject("restricted", true)
+                    .addObject("unavailable", false)
+                    .addObject("dirs", Collections.emptyList())
+                    .addObject("files", Collections.emptyList())
+                    .addObject("breadcrumbs", Collections.emptyList());
         }
 
         StorageManager sm = getStorageManager();
         if (sm == null) {
-            return NanoHTTPD.newFixedLengthResponse(Status.OK, "text/html; charset=UTF-8",
-                    "<div class='fm-empty-state'><p>Armazenamento indisponível</p></div>");
+            return mav.addObject("restricted", false)
+                    .addObject("unavailable", true)
+                    .addObject("dirs", Collections.emptyList())
+                    .addObject("files", Collections.emptyList())
+                    .addObject("breadcrumbs", Collections.emptyList());
         }
 
         boolean isAdmin = "Admin".equalsIgnoreCase(user.getPolicy()) || "*".equals(user.getPolicy());
@@ -443,124 +437,151 @@ public class IndexController {
 
         File[] directChildren = sm.listDirectChildren(user, activeBucket, pathFilter);
 
-        StringBuilder sb = new StringBuilder();
-
-        // Breadcrumb bar Windows Explorer style
-        sb.append("<div class='win-breadcrumb-bar'>");
-        sb.append("<span class='win-breadcrumb-root' onclick=\"navigateToPath('").append(activeBucket).append("', '')\">");
-        sb.append("📁 ").append(activeBucket.toUpperCase(Locale.ROOT)).append("</span>");
-
+        List<Map<String, Object>> breadcrumbList = new ArrayList<>();
         if (!pathFilter.isEmpty()) {
             String[] parts = pathFilter.split("/");
             StringBuilder accumulated = new StringBuilder();
             for (String part : parts) {
                 if (accumulated.length() > 0) accumulated.append("/");
                 accumulated.append(part);
-                String currentAcc = accumulated.toString();
-                sb.append("<span class='win-breadcrumb-sep'>›</span>");
-                sb.append("<span class='win-breadcrumb-crumb' onclick=\"navigateToPath('").append(activeBucket).append("', '").append(currentAcc.replace("'", "\\'")).append("')\">");
-                sb.append(part).append("</span>");
+                Map<String, Object> crumb = new HashMap<>();
+                crumb.put("name", part);
+                crumb.put("accumulatedPath", accumulated.toString());
+                breadcrumbList.add(crumb);
             }
         }
-        sb.append("</div>");
 
-        // Action Toolbar Windows Style (Voltar se dentro de pasta, Nova Pasta, etc.)
-        sb.append("<div class='win-explorer-toolbar'>");
-        if (!pathFilter.isEmpty()) {
+        boolean hasParent = !pathFilter.isEmpty();
+        String parentPath = "";
+        if (hasParent) {
             int lastSlash = pathFilter.lastIndexOf('/');
-            String parentPath = lastSlash > 0 ? pathFilter.substring(0, lastSlash) : "";
-            sb.append("<button class='win-btn' onclick=\"navigateToPath('").append(activeBucket).append("', '").append(parentPath.replace("'", "\\'")).append("')\" title='Subir um nível'>");
-            sb.append("⬆️ Voltar</button>");
+            parentPath = lastSlash > 0 ? pathFilter.substring(0, lastSlash) : "";
         }
-        sb.append("<button class='win-btn' onclick='promptNewFolder()' title='Criar nova pasta nesta localização'>📁 Nova Pasta</button>");
-        sb.append("<button class='win-btn' onclick=\"document.getElementById('fileInput').click()\" title='Carregar arquivo para esta pasta'>⬆️ Enviar Arquivo</button>");
-        sb.append("</div>");
-
-        // Unified Windows Explorer View List
-        sb.append("<div class='win-explorer-grid' oncontextmenu='handleGridContextMenu(event)'>");
 
         List<File> dirList = new ArrayList<>();
         List<File> fileList = new ArrayList<>();
-        for (File f : directChildren) {
-            if (f.isDirectory()) {
-                dirList.add(f);
-            } else if (f.isFile()) {
-                fileList.add(f);
+        if (directChildren != null) {
+            for (File f : directChildren) {
+                if (f.isDirectory()) {
+                    dirList.add(f);
+                } else if (f.isFile()) {
+                    fileList.add(f);
+                }
             }
         }
 
-        // Sort alphabetically
         dirList.sort((a, b) -> a.getName().compareToIgnoreCase(b.getName()));
         fileList.sort((a, b) -> a.getName().compareToIgnoreCase(b.getName()));
 
-        if (dirList.isEmpty() && fileList.isEmpty()) {
-            sb.append("<div class='fm-empty-state win-empty-state'>");
-            sb.append("<div class='fm-empty-icon'>📂</div>");
-            sb.append("<h3>Esta pasta está vazia</h3>");
-            sb.append("<p>Clique em <strong>Enviar Arquivo</strong> ou <strong>Nova Pasta</strong> para começar.</p>");
-            sb.append("</div>");
-        } else {
-            // Render Directories first
-            for (File dir : dirList) {
-                String subChildPath = pathFilter.isEmpty() ? dir.getName() : (pathFilter + "/" + dir.getName());
-                String escapedBucket = activeBucket.replace("'", "\\'");
-                String escapedSubChild = subChildPath.replace("'", "\\'");
-                String escapedName = dir.getName().replace("'", "\\'");
-
-                sb.append("<div class='win-item win-folder-item' ")
-                        .append("onclick=\"navigateToPath('").append(escapedBucket).append("', '").append(escapedSubChild).append("')\" ")
-                        .append("oncontextmenu=\"handleItemContextMenu(event, 'folder', '").append(escapedBucket).append("', '").append(escapedSubChild).append("', '").append(escapedName).append("')\" ")
-                        .append("title='Pasta: ").append(dir.getName()).append(" (Clique para abrir, botão direito para opções)'>");
-                sb.append("<div class='win-item-icon'>").append(getFileSvg(dir.getName(), true)).append("</div>");
-                sb.append("<span class='win-item-name'>").append(dir.getName()).append("</span>");
-                sb.append("</div>");
-            }
-
-            // Render Files
-            for (File file : fileList) {
-                String fullKey = pathFilter.isEmpty() ? file.getName() : (pathFilter + "/" + file.getName());
-                String escapedBucket = activeBucket.replace("'", "\\'");
-                String escapedKey = fullKey.replace("'", "\\'");
-                String escapedName = file.getName().replace("'", "\\'");
-                String formattedSize = formatBytes(file.length());
-
-                sb.append("<div class='win-item win-file-item' ")
-                        .append("onclick=\"openPreviewModal('").append(escapedBucket).append("', '").append(escapedKey).append("', '").append(formattedSize).append("')\" ")
-                        .append("data-bytes='").append(file.length()).append("' ")
-                        .append("data-size='").append(formattedSize).append("' ")
-                        .append("data-name='").append(escapedName).append("' ")
-                        .append("oncontextmenu=\"handleItemContextMenu(event, 'file', '").append(escapedBucket).append("', '").append(escapedKey).append("', '").append(escapedName).append("')\" ")
-                        .append("title='").append(file.getName()).append(" (").append(formattedSize).append(")'>");
-                sb.append("<div class='win-item-icon'>").append(getFileSvg(file.getName(), false)).append("</div>");
-                sb.append("<span class='win-item-name'>").append(file.getName()).append("</span>");
-                sb.append("</div>");
-            }
+        List<Map<String, Object>> renderedDirs = new ArrayList<>();
+        for (File dir : dirList) {
+            String subChildPath = pathFilter.isEmpty() ? dir.getName() : (pathFilter + "/" + dir.getName());
+            Map<String, Object> dirMap = new HashMap<>();
+            dirMap.put("name", dir.getName());
+            dirMap.put("bucket", activeBucket);
+            dirMap.put("path", subChildPath);
+            renderedDirs.add(dirMap);
         }
 
-        sb.append("</div>");
-        return NanoHTTPD.newFixedLengthResponse(Status.OK, "text/html; charset=UTF-8", sb.toString());
+        List<Map<String, Object>> renderedFiles = new ArrayList<>();
+        for (File file : fileList) {
+            String fullKey = pathFilter.isEmpty() ? file.getName() : (pathFilter + "/" + file.getName());
+            String formattedSize = formatBytes(file.length());
+            String name = file.getName();
+            String lower = name.toLowerCase(Locale.ROOT);
+
+            String ext = "";
+            int lastDot = name.lastIndexOf('.');
+            if (lastDot > 0 && lastDot < name.length() - 1) {
+                ext = name.substring(lastDot + 1).toUpperCase(Locale.ROOT);
+                if (ext.length() > 4) {
+                    ext = ext.substring(0, 4);
+                }
+            } else {
+                ext = "FILE";
+            }
+
+            // Colors following the reference sheet
+            String badgeBg = "#6B7280";
+            if (lower.endsWith(".pdf")) {
+                badgeBg = "#E53E3E"; // Vermelho PDF
+            } else if (lower.endsWith(".doc") || lower.endsWith(".docx")) {
+                badgeBg = "#2B6CB0"; // Azul DOC/DOCX
+            } else if (lower.endsWith(".xls") || lower.endsWith(".xlsx") || lower.endsWith(".csv")) {
+                badgeBg = "#2F855A"; // Verde XLS/XLSX
+            } else if (lower.endsWith(".ppt") || lower.endsWith(".pptx") || lower.endsWith(".key")) {
+                badgeBg = "#DD6B20"; // Laranja PPT
+            } else if (lower.endsWith(".htm") || lower.endsWith(".html")) {
+                badgeBg = "#48BB78"; // Verde HTM
+            } else if (lower.endsWith(".css")) {
+                badgeBg = "#ECC94B"; // Amarelo/Dourado CSS
+            } else if (lower.endsWith(".js") || lower.endsWith(".json")) {
+                badgeBg = "#805AD5"; // Roxo/Bordô JS
+            } else if (lower.endsWith(".xml")) {
+                badgeBg = "#B7791F"; // Caqui/Bege XML
+            } else if (lower.endsWith(".php")) {
+                badgeBg = "#2C5282"; // Azul Escuro PHP
+            } else if (lower.endsWith(".txt") || lower.endsWith(".md") || lower.endsWith(".log")) {
+                badgeBg = "#718096"; // Cinza Escuro TXT
+            } else if (lower.endsWith(".zip") || lower.endsWith(".rar") || lower.endsWith(".7z") || lower.endsWith(".tar") || lower.endsWith(".gz") || lower.endsWith(".apk")) {
+                badgeBg = "#D69E2E"; // Amarelo escuro ZIP
+            } else if (lower.endsWith(".png") || lower.endsWith(".jpg") || lower.endsWith(".jpeg") || lower.endsWith(".gif") || lower.endsWith(".webp") || lower.endsWith(".svg")) {
+                badgeBg = "#319795"; // Ciano/Teal Imagem
+            }
+
+            boolean isTable = lower.endsWith(".xls") || lower.endsWith(".xlsx") || lower.endsWith(".csv");
+            boolean isChart = lower.endsWith(".ppt") || lower.endsWith(".pptx") || lower.endsWith(".key");
+            boolean isImage = lower.endsWith(".png") || lower.endsWith(".jpg") || lower.endsWith(".jpeg") || lower.endsWith(".gif") || lower.endsWith(".webp") || lower.endsWith(".svg");
+            boolean isStandard = !isTable && !isChart && !isImage;
+
+            Map<String, Object> fileMap = new HashMap<>();
+            fileMap.put("name", name);
+            fileMap.put("bucket", activeBucket);
+            fileMap.put("key", fullKey);
+            fileMap.put("bytes", file.length());
+            fileMap.put("sizeFormatted", formattedSize);
+            fileMap.put("ext", ext);
+            fileMap.put("badgeBg", badgeBg);
+            fileMap.put("isTable", isTable);
+            fileMap.put("isChart", isChart);
+            fileMap.put("isImage", isImage);
+            fileMap.put("isStandard", isStandard);
+            renderedFiles.add(fileMap);
+        }
+
+        boolean isEmpty = renderedDirs.isEmpty() && renderedFiles.isEmpty();
+
+        return mav.addObject("restricted", false)
+                .addObject("unavailable", false)
+                .addObject("activeBucket", activeBucket)
+                .addObject("activeBucketUpper", activeBucket.toUpperCase(Locale.ROOT))
+                .addObject("pathFilter", pathFilter)
+                .addObject("breadcrumbs", breadcrumbList)
+                .addObject("hasParent", hasParent)
+                .addObject("parentPath", parentPath)
+                .addObject("isEmpty", isEmpty)
+                .addObject("dirs", renderedDirs)
+                .addObject("files", renderedFiles);
     }
 
     // HTMX Fragment: Renders activity feed (right sidebar)
     @GetMethod("/web/fragments/activities")
-    public Response getActivitiesFragment() {
+    public ModelAndView getActivitiesFragment() {
         List<String> rawLogs = ServerLogBus.getAllLogs();
         List<Map<String, String>> dbEvents = getEventRepository().getEvents();
-        StringBuilder sb = new StringBuilder();
+        List<Map<String, Object>> activities = new ArrayList<>();
 
-        sb.append("<div class='activity-timeline'>");
-
-        // Combine logs and db events
         int count = 0;
         if (dbEvents != null) {
             for (int i = dbEvents.size() - 1; i >= 0 && count < 5; i--) {
                 Map<String, String> ev = dbEvents.get(i);
-                sb.append("<div class='activity-item'>");
-                sb.append("<div class='activity-avatar color-purple'>SYS</div>");
-                sb.append("<div class='activity-content'>");
-                sb.append("<div class='activity-author'>System Event <span class='activity-time'>").append(ev.getOrDefault("createdAt", "")).append("</span></div>");
-                sb.append("<p class='activity-text'>").append(ev.getOrDefault("description", "")).append("</p>");
-                sb.append("</div></div>");
+                Map<String, Object> item = new HashMap<>();
+                item.put("avatarClass", "color-purple");
+                item.put("badge", "SYS");
+                item.put("title", "System Event");
+                item.put("time", ev.getOrDefault("createdAt", ""));
+                item.put("description", ev.getOrDefault("description", ""));
+                activities.add(item);
                 count++;
             }
         }
@@ -568,30 +589,30 @@ public class IndexController {
         if (rawLogs != null) {
             for (int i = rawLogs.size() - 1; i >= 0 && count < 8; i--) {
                 String log = rawLogs.get(i);
-                sb.append("<div class='activity-item'>");
-                sb.append("<div class='activity-avatar color-blue'>HTTP</div>");
-                sb.append("<div class='activity-content'>");
-                sb.append("<div class='activity-author'>Server Log <span class='activity-time'>recente</span></div>");
-                sb.append("<p class='activity-text'>").append(log).append("</p>");
-                sb.append("</div></div>");
+                Map<String, Object> item = new HashMap<>();
+                item.put("avatarClass", "color-blue");
+                item.put("badge", "HTTP");
+                item.put("title", "Server Log");
+                item.put("time", "recente");
+                item.put("description", log);
+                activities.add(item);
                 count++;
             }
         }
 
-        if (count == 0) {
-            sb.append("<div class='empty-activity'><p>Nenhuma atividade registrada ainda.</p></div>");
-        }
-
-        sb.append("</div>");
-        return NanoHTTPD.newFixedLengthResponse(Status.OK, "text/html; charset=UTF-8", sb.toString());
+        return new ModelAndView("fragments/activities")
+                .addObject("events", activities)
+                .addObject("isEmpty", activities.isEmpty());
     }
 
     // HTMX Action: Create new folder/bucket
     @PostMethod("/web/create-folder")
-    public Response createFolder(@RequestParam("name") String name, IHTTPSession session) {
+    public Object createFolder(@RequestParam("name") String name, IHTTPSession session) {
         IamUser user = resolveAuthenticatedUser(session);
-        if (user == null || !getIamService().canPerform(user, "s3:PutObject")) {
-            return NanoHTTPD.newFixedLengthResponse(Status.FORBIDDEN, "text/plain", "Permissão negada");
+        if (user == null) {
+            return com.github.matheuscruzsouza.nanospring.http.ResponseEntity
+                    .status(com.github.matheuscruzsouza.nanospring.http.HttpStatus.FORBIDDEN)
+                    .body("Permissão negada");
         }
 
         if (name != null && !name.trim().isEmpty()) {
@@ -609,6 +630,12 @@ public class IndexController {
                     targetBucket = userDefaultBucket;
                 }
 
+                if (!getIamService().canPerformInBucket(user, "s3:PutObject", targetBucket, userDefaultBucket)) {
+                    return com.github.matheuscruzsouza.nanospring.http.ResponseEntity
+                            .status(com.github.matheuscruzsouza.nanospring.http.HttpStatus.FORBIDDEN)
+                            .body("Permissão negada");
+                }
+
                 String fullFolderPath = subPath.isEmpty() ? name.trim() : (subPath + "/" + name.trim());
                 sm.createFolder(targetBucket, fullFolderPath);
             }
@@ -618,7 +645,7 @@ public class IndexController {
 
     // HTMX Fragment: Renders battery badge and telemetry status
     @GetMethod("/web/fragments/battery")
-    public Response getBatteryFragment() {
+    public ModelAndView getBatteryFragment() {
         BatteryStatus battery = getBatteryStatus();
         int level = battery.getPercentage();
         boolean charging = battery.isCharging();
@@ -626,55 +653,101 @@ public class IndexController {
         String badgeColor = charging ? "var(--accent-green)" : (level <= 20 ? "var(--accent-red)" : "var(--accent-blue)");
         String badgeBg = charging ? "rgba(16, 185, 129, 0.12)" : (level <= 20 ? "rgba(244, 63, 94, 0.12)" : "rgba(37, 99, 235, 0.12)");
 
-        String html = String.format(Locale.US,
-                "<span class='top-badge' style='background: %s; color: %s; border-color: %s;' id='batteryBadge'>" +
-                "%s %d%%%s</span>",
-                badgeBg, badgeColor, badgeColor, icon, level, charging ? " Chg" : "");
-
-        return NanoHTTPD.newFixedLengthResponse(Status.OK, "text/html; charset=UTF-8", html);
+        return new ModelAndView("fragments/battery")
+                .addObject("badgeBg", badgeBg)
+                .addObject("badgeColor", badgeColor)
+                .addObject("icon", icon)
+                .addObject("level", level)
+                .addObject("charging", charging);
     }
 
     // HTMX Fragment: Renders auth status
     @GetMethod("/web/fragments/auth-status")
-    public Response getAuthStatusFragment(IHTTPSession session) {
+    public ModelAndView getAuthStatusFragment(IHTTPSession session) {
         IamUser user = resolveAuthenticatedUser(session);
-        StringBuilder sb = new StringBuilder();
+        ModelAndView mav = new ModelAndView("fragments/auth_status");
         if (user != null) {
-            sb.append("<div class='user-profile-pill'>");
-            sb.append("<div class='avatar-circle'>").append(user.getName().substring(0, 1).toUpperCase()).append("</div>");
-            sb.append("<div class='user-meta'>");
-            sb.append("<span class='user-name'>").append(user.getName()).append("</span>");
-            sb.append("<span class='user-role'>").append(user.getPolicy()).append("</span>");
-            sb.append("</div>");
-            sb.append("<button class='logout-btn' onclick='logout()' title='Sair'>✕</button>");
-            sb.append("</div>");
+            return mav.addObject("isAuthenticated", true)
+                    .addObject("userInitial", user.getName().substring(0, 1).toUpperCase(Locale.ROOT))
+                    .addObject("userName", user.getName())
+                    .addObject("userRole", user.getPolicy());
         } else {
-            sb.append("<button class='btn-tetrisly btn-outline' onclick='logout()'>🔑 Entrar</button>");
+            return mav.addObject("isAuthenticated", false);
         }
-        return NanoHTTPD.newFixedLengthResponse(Status.OK, "text/html; charset=UTF-8", sb.toString());
+    }
+
+    // Endpoint web para cadastro / definição de nova senha usando token de 6 dígitos
+    @PostMethod("/web/set-password")
+    public Object handleSetPassword(IHTTPSession session) {
+        Map<String, String> parms = session.getParms();
+        String username = parms != null ? parms.get("username") : null;
+        String token = parms != null ? parms.get("token") : null;
+        String newPassword = parms != null ? parms.get("password") : null;
+
+        // Se os parâmetros não vieram pela querystring / parms automáticos, parseia o body
+        if (username == null || token == null || newPassword == null) {
+            try {
+                Map<String, String> files = new HashMap<>();
+                session.parseBody(files);
+                if (session.getParms() != null) {
+                    if (username == null) username = session.getParms().get("username");
+                    if (token == null) token = session.getParms().get("token");
+                    if (newPassword == null) newPassword = session.getParms().get("password");
+                }
+                // Se veio JSON no postData
+                if (files.containsKey("postData")) {
+                    String json = files.get("postData");
+                    if (json != null && !json.trim().isEmpty()) {
+                        com.google.gson.JsonObject obj = com.google.gson.JsonParser.parseString(json).getAsJsonObject();
+                        if (username == null && obj.has("username")) username = obj.get("username").getAsString();
+                        if (token == null && obj.has("token")) token = obj.get("token").getAsString();
+                        if (newPassword == null && obj.has("password")) newPassword = obj.get("password").getAsString();
+                    }
+                }
+            } catch (Exception ignored) {}
+        }
+
+        if (username == null || token == null || newPassword == null || newPassword.trim().isEmpty()) {
+            return com.github.matheuscruzsouza.nanospring.http.ResponseEntity
+                    .badRequest()
+                    .header("Content-Type", "application/json")
+                    .body("{\"success\":false,\"message\":\"Preencha todos os campos obrigatórios.\"}");
+        }
+
+        boolean updated = getIamService().setPasswordWithToken(username, token, newPassword);
+        if (updated) {
+            return com.github.matheuscruzsouza.nanospring.http.ResponseEntity
+                    .ok()
+                    .header("Content-Type", "application/json")
+                    .body("{\"success\":true,\"message\":\"Senha definida com sucesso! Você já pode entrar com seu usuário e senha.\"}");
+        } else {
+            return com.github.matheuscruzsouza.nanospring.http.ResponseEntity
+                    .badRequest()
+                    .header("Content-Type", "application/json")
+                    .body("{\"success\":false,\"message\":\"Token de 6 dígitos inválido ou usuário não encontrado.\"}");
+        }
     }
 
     // HTMX Action: File upload returning updated files
     @PostMethod("/web/upload-file")
-    public Response handleHtmxUpload(
+    public Object handleHtmxUpload(
             @UploadedFile("file") File uploadedFile,
             @RequestParam("file") String clientFileName,
             IHTTPSession session
     ) {
         IamUser user = resolveAuthenticatedUser(session);
         if (user == null) {
-            return NanoHTTPD.newFixedLengthResponse(Status.UNAUTHORIZED, "text/html; charset=UTF-8",
-                    "<div class='fm-empty-state text-danger'>Autenticação requerida para upload.</div>");
-        }
-
-        if (!getIamService().canPerform(user, "s3:PutObject")) {
-            return NanoHTTPD.newFixedLengthResponse(Status.FORBIDDEN, "text/html; charset=UTF-8",
-                    "<div class='fm-empty-state text-danger'>Permissão negada pela política IAM (" + user.getPolicy() + ").</div>");
+            return com.github.matheuscruzsouza.nanospring.http.ResponseEntity
+                    .status(com.github.matheuscruzsouza.nanospring.http.HttpStatus.UNAUTHORIZED)
+                    .header("Content-Type", "text/html; charset=UTF-8")
+                    .body("<div class='fm-empty-state text-danger'>Autenticação requerida para upload.</div>");
         }
 
         if (uploadedFile == null || !uploadedFile.exists()) {
-            return NanoHTTPD.newFixedLengthResponse(Status.BAD_REQUEST, "text/html; charset=UTF-8",
-                    "<div class='fm-empty-state text-danger'>Nenhum arquivo recebido pelo servidor.</div>");
+            return com.github.matheuscruzsouza.nanospring.http.ResponseEntity
+                    .badRequest()
+                    .header("Content-Type", "text/html; charset=UTF-8")
+                    .body("<div class='fm-empty-state text-danger'>Nenhum arquivo recebido pelo servidor.</div>");
         }
 
         try {
@@ -697,6 +770,13 @@ public class IndexController {
                 bucket = userDefaultBucket;
             }
 
+            if (!getIamService().canPerformInBucket(user, "s3:PutObject", bucket, userDefaultBucket)) {
+                return com.github.matheuscruzsouza.nanospring.http.ResponseEntity
+                        .status(com.github.matheuscruzsouza.nanospring.http.HttpStatus.FORBIDDEN)
+                        .header("Content-Type", "text/html; charset=UTF-8")
+                        .body("<div class='fm-empty-state text-danger'>Permissão negada pela política IAM (" + user.getPolicy() + ").</div>");
+            }
+
             String originalName = clientFileName;
             if (originalName == null || originalName.trim().isEmpty()) {
                 originalName = "upload_" + System.currentTimeMillis();
@@ -717,8 +797,10 @@ public class IndexController {
                 FileUtils.copyStream(in, out, Long.MAX_VALUE);
             }
         } catch (Exception e) {
-            return NanoHTTPD.newFixedLengthResponse(Status.INTERNAL_ERROR, "text/html; charset=UTF-8",
-                    "<div class='fm-empty-state text-danger'>Erro no upload: " + e.getMessage() + "</div>");
+            return com.github.matheuscruzsouza.nanospring.http.ResponseEntity
+                    .status(com.github.matheuscruzsouza.nanospring.http.HttpStatus.INTERNAL_SERVER_ERROR)
+                    .header("Content-Type", "text/html; charset=UTF-8")
+                    .body("<div class='fm-empty-state text-danger'>Erro no upload: " + e.getMessage() + "</div>");
         } finally {
             try {
                 if (uploadedFile.exists()) {
@@ -733,14 +815,16 @@ public class IndexController {
 
     // HTMX Action: Delete file with bucket segment
     @DeleteMethod("/web/files/:bucket/:filename")
-    public Response deleteFile(
+    public Object deleteFile(
             @PathVariable("bucket") String bucket,
             @PathVariable("filename") String filename,
             IHTTPSession session
     ) {
         IamUser user = resolveAuthenticatedUser(session);
-        if (user == null || !getIamService().canPerform(user, "s3:DeleteObject")) {
-            return NanoHTTPD.newFixedLengthResponse(Status.FORBIDDEN, "text/plain", "Permissão negada");
+        if (user == null) {
+            return com.github.matheuscruzsouza.nanospring.http.ResponseEntity
+                    .status(com.github.matheuscruzsouza.nanospring.http.HttpStatus.FORBIDDEN)
+                    .body("Permissão negada");
         }
 
         try {
@@ -750,26 +834,38 @@ public class IndexController {
             boolean isAdmin = "Admin".equalsIgnoreCase(user.getPolicy()) || "*".equals(user.getPolicy());
             String userDefaultBucket = sm.getUserDefaultBucket(user);
 
+            if (!getIamService().canPerformInBucket(user, "s3:DeleteObject", decodedBucket, userDefaultBucket)) {
+                return com.github.matheuscruzsouza.nanospring.http.ResponseEntity
+                        .status(com.github.matheuscruzsouza.nanospring.http.HttpStatus.FORBIDDEN)
+                        .body("Permissão negada");
+            }
+
             if (!isAdmin && !decodedBucket.equals(userDefaultBucket)) {
-                return NanoHTTPD.newFixedLengthResponse(Status.FORBIDDEN, "text/plain", "Permissão negada para este bucket");
+                return com.github.matheuscruzsouza.nanospring.http.ResponseEntity
+                        .status(com.github.matheuscruzsouza.nanospring.http.HttpStatus.FORBIDDEN)
+                        .body("Permissão negada para este bucket");
             }
 
             File file = sm.resolveFile(decodedBucket, decodedFile);
             if (file.exists() && file.isFile()) {
                 file.delete();
             }
-            return NanoHTTPD.newFixedLengthResponse(Status.OK, "text/html", "");
+            return com.github.matheuscruzsouza.nanospring.http.ResponseEntity.ok("");
         } catch (Exception e) {
-            return NanoHTTPD.newFixedLengthResponse(Status.INTERNAL_ERROR, "text/plain", e.getMessage());
+            return com.github.matheuscruzsouza.nanospring.http.ResponseEntity
+                    .status(com.github.matheuscruzsouza.nanospring.http.HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(e.getMessage());
         }
     }
 
     // HTMX / API Action: Delete item (file or folder) via POST with parameters
     @PostMethod("/web/delete-item")
-    public Response deleteItem(IHTTPSession session) {
+    public Object deleteItem(IHTTPSession session) {
         IamUser user = resolveAuthenticatedUser(session);
-        if (user == null || !getIamService().canPerform(user, "s3:DeleteObject")) {
-            return NanoHTTPD.newFixedLengthResponse(Status.FORBIDDEN, "text/plain", "Permissão negada");
+        if (user == null) {
+            return com.github.matheuscruzsouza.nanospring.http.ResponseEntity
+                    .status(com.github.matheuscruzsouza.nanospring.http.HttpStatus.FORBIDDEN)
+                    .body("Permissão negada");
         }
 
         Map<String, String> parms = session.getParms();
@@ -780,8 +876,17 @@ public class IndexController {
         if (sm != null && bucket != null && !bucket.isEmpty() && path != null && !path.isEmpty()) {
             boolean isAdmin = "Admin".equalsIgnoreCase(user.getPolicy()) || "*".equals(user.getPolicy());
             String userDefaultBucket = sm.getUserDefaultBucket(user);
+
+            if (!getIamService().canPerformInBucket(user, "s3:DeleteObject", bucket, userDefaultBucket)) {
+                return com.github.matheuscruzsouza.nanospring.http.ResponseEntity
+                        .status(com.github.matheuscruzsouza.nanospring.http.HttpStatus.FORBIDDEN)
+                        .body("Permissão negada");
+            }
+
             if (!isAdmin && !bucket.equals(userDefaultBucket)) {
-                return NanoHTTPD.newFixedLengthResponse(Status.FORBIDDEN, "text/plain", "Permissão negada para este bucket");
+                return com.github.matheuscruzsouza.nanospring.http.ResponseEntity
+                        .status(com.github.matheuscruzsouza.nanospring.http.HttpStatus.FORBIDDEN)
+                        .body("Permissão negada para este bucket");
             }
             try {
                 File target = sm.resolveFile(bucket, path);
@@ -789,7 +894,59 @@ public class IndexController {
                     sm.deleteRecursively(target);
                 }
             } catch (Exception e) {
-                return NanoHTTPD.newFixedLengthResponse(Status.INTERNAL_ERROR, "text/plain", e.getMessage());
+                return com.github.matheuscruzsouza.nanospring.http.ResponseEntity
+                        .status(com.github.matheuscruzsouza.nanospring.http.HttpStatus.INTERNAL_SERVER_ERROR)
+                        .body(e.getMessage());
+            }
+        }
+        return getFilesFragment(session);
+    }
+
+    // HTMX / API Action: Rename item (file or folder)
+    @PostMethod("/web/rename-item")
+    public Object renameItem(IHTTPSession session) {
+        IamUser user = resolveAuthenticatedUser(session);
+        if (user == null) {
+            return com.github.matheuscruzsouza.nanospring.http.ResponseEntity
+                    .status(com.github.matheuscruzsouza.nanospring.http.HttpStatus.FORBIDDEN)
+                    .body("Permissão negada");
+        }
+
+        Map<String, String> parms = session.getParms();
+        String bucket = parms != null ? parms.get("bucket") : "";
+        String oldPath = parms != null ? parms.get("oldPath") : "";
+        String newName = parms != null ? parms.get("newName") : "";
+        StorageManager sm = getStorageManager();
+
+        if (sm != null && bucket != null && !bucket.isEmpty() && oldPath != null && !oldPath.isEmpty() && newName != null && !newName.trim().isEmpty()) {
+            boolean isAdmin = "Admin".equalsIgnoreCase(user.getPolicy()) || "*".equals(user.getPolicy());
+            String userDefaultBucket = sm.getUserDefaultBucket(user);
+
+            if (!getIamService().canPerformInBucket(user, "s3:PutObject", bucket, userDefaultBucket)) {
+                return com.github.matheuscruzsouza.nanospring.http.ResponseEntity
+                        .status(com.github.matheuscruzsouza.nanospring.http.HttpStatus.FORBIDDEN)
+                        .body("Permissão negada");
+            }
+
+            if (!isAdmin && !bucket.equals(userDefaultBucket)) {
+                return com.github.matheuscruzsouza.nanospring.http.ResponseEntity
+                        .status(com.github.matheuscruzsouza.nanospring.http.HttpStatus.FORBIDDEN)
+                        .body("Permissão negada para este bucket");
+            }
+
+            try {
+                File source = sm.resolveFile(bucket, oldPath);
+                if (source.exists()) {
+                    File parent = source.getParentFile();
+                    File dest = new File(parent, newName.trim());
+                    if (!dest.exists()) {
+                        source.renameTo(dest);
+                    }
+                }
+            } catch (Exception e) {
+                return com.github.matheuscruzsouza.nanospring.http.ResponseEntity
+                        .status(com.github.matheuscruzsouza.nanospring.http.HttpStatus.INTERNAL_SERVER_ERROR)
+                        .body(e.getMessage());
             }
         }
         return getFilesFragment(session);
@@ -797,7 +954,7 @@ public class IndexController {
 
     // Direct download endpoint with bucket segment
     @GetMethod("/web/download/:bucket/:filename")
-    public Response downloadFile(
+    public Object downloadFile(
             @PathVariable("bucket") String bucket,
             @PathVariable("filename") String filename,
             IHTTPSession session
@@ -807,7 +964,7 @@ public class IndexController {
 
     // Direct view / inline preview endpoint with bucket segment
     @GetMethod("/web/view/:bucket/:filename")
-    public Response viewFile(
+    public Object viewFile(
             @PathVariable("bucket") String bucket,
             @PathVariable("filename") String filename,
             IHTTPSession session
@@ -815,10 +972,12 @@ public class IndexController {
         return serveFileContent(bucket, filename, session, false);
     }
 
-    private Response serveFileContent(String bucket, String filename, IHTTPSession session, boolean isAttachment) {
+    private Object serveFileContent(String bucket, String filename, IHTTPSession session, boolean isAttachment) {
         IamUser user = resolveAuthenticatedUser(session);
         if (user == null || !getIamService().canPerform(user, "s3:GetObject")) {
-            return NanoHTTPD.newFixedLengthResponse(Status.FORBIDDEN, "text/plain", "Acesso restrito");
+            return com.github.matheuscruzsouza.nanospring.http.ResponseEntity
+                    .status(com.github.matheuscruzsouza.nanospring.http.HttpStatus.FORBIDDEN)
+                    .body("Acesso restrito");
         }
 
         try {
@@ -833,21 +992,26 @@ public class IndexController {
             String userDefaultBucket = sm.getUserDefaultBucket(user);
 
             if (!isAdmin && !decodedBucket.equals(userDefaultBucket)) {
-                return NanoHTTPD.newFixedLengthResponse(Status.FORBIDDEN, "text/plain", "Acesso restrito a este bucket");
+                return com.github.matheuscruzsouza.nanospring.http.ResponseEntity
+                        .status(com.github.matheuscruzsouza.nanospring.http.HttpStatus.FORBIDDEN)
+                        .body("Acesso restrito a este bucket");
             }
 
             File file = sm.resolveFile(decodedBucket, decodedFile);
             if (!file.exists() || !file.isFile()) {
-                return NanoHTTPD.newFixedLengthResponse(Status.NOT_FOUND, "text/plain", "Arquivo não encontrado");
+                return com.github.matheuscruzsouza.nanospring.http.ResponseEntity
+                        .status(com.github.matheuscruzsouza.nanospring.http.HttpStatus.NOT_FOUND)
+                        .body("Arquivo não encontrado");
             }
 
-            FileInputStream fis = new FileInputStream(file);
-            Response res = NanoHTTPD.newFixedLengthResponse(Status.OK, FileUtils.getMimeType(file.getName()), fis, file.length());
+            Response res = ByteRangeHandler.serveFile(session, file, FileUtils.getMimeType(file.getName()));
             String dispositionType = isAttachment ? "attachment" : "inline";
             res.addHeader("Content-Disposition", dispositionType + "; filename=\"" + file.getName() + "\"");
             return res;
         } catch (Exception e) {
-            return NanoHTTPD.newFixedLengthResponse(Status.INTERNAL_ERROR, "text/plain", e.getMessage());
+            return com.github.matheuscruzsouza.nanospring.http.ResponseEntity
+                    .status(com.github.matheuscruzsouza.nanospring.http.HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(e.getMessage());
         }
     }
 
@@ -895,6 +1059,15 @@ public class IndexController {
         status.put("hostResponderRunning", hostResponderRunning);
         status.put("hostname", localHostname);
         status.put("browserUrl", "http://" + localHostname + ":" + port + "/");
+
+        com.github.matheuscruzsouza.androidserver.service.MyBackendService backend =
+                com.github.matheuscruzsouza.androidserver.service.MyBackendService.getInstance();
+        com.github.matheuscruzsouza.androidserver.service.NanoLocalTunnel tunnel =
+                backend != null ? backend.getLocalTunnel() : null;
+        status.put("localTunnelEnabled", Boolean.parseBoolean(Environment.getProperty("nano.localtunnel.enabled", "false")));
+        status.put("localTunnelRunning", tunnel != null && tunnel.isRunning());
+        status.put("localTunnelUrl", tunnel != null ? tunnel.getPublicUrl() : null);
+        status.put("vpnIp", NetworkUtils.getVpnIpAddress());
         return status;
     }
 
@@ -911,59 +1084,95 @@ public class IndexController {
     @GetMethod("/api/events")
     public SseEmitter streamEvents() {
         SseEmitter emitter = new SseEmitter();
-        new Thread(() -> {
+        activeEmitters.add(emitter);
+        emitter.onCompletion(() -> activeEmitters.remove(emitter));
+        emitter.onError(e -> activeEmitters.remove(emitter));
+        emitter.onTimeout(() -> activeEmitters.remove(emitter));
+
+        if (sseBroadcasterStarted.compareAndSet(false, true)) {
+            sseExecutor.scheduleWithFixedDelay(this::broadcastSseUpdate, 0, 2, TimeUnit.SECONDS);
+        } else {
+            // Envia o estado atual na mesma thread única para atualizar o cliente imediatamente ao conectar
+            sseExecutor.execute(() -> sendSseUpdateToEmitter(emitter));
+        }
+
+        return emitter;
+    }
+
+    private void broadcastSseUpdate() {
+        if (activeEmitters.isEmpty()) {
+            return;
+        }
+        Map<String, Object> stats = new HashMap<>();
+        String batteryHtml = buildTelemetryPayload(stats);
+
+        for (SseEmitter emitter : activeEmitters) {
+            if (emitter.isCompleted()) {
+                activeEmitters.remove(emitter);
+                continue;
+            }
             try {
-                // Stream metrics and battery up to 60 updates (120 seconds)
-                for (int i = 0; i < 60; i++) {
-                    long startTime = ServerLogBus.getServerStartTime();
-                    String uptime = "00:00:00";
-                    if (startTime > 0) {
-                        long diff = (System.currentTimeMillis() - startTime) / 1000;
-                        long hours = diff / 3600;
-                        long minutes = (diff % 3600) / 60;
-                        long seconds = diff % 60;
-                        uptime = String.format(Locale.getDefault(), "%02d:%02d:%02d", hours, minutes, seconds);
-                    }
-                    Runtime rt = Runtime.getRuntime();
-                    long usedMemory = (rt.totalMemory() - rt.freeMemory()) / (1024 * 1024);
-                    long totalMemory = rt.totalMemory() / (1024 * 1024);
-
-                    BatteryStatus battery = getBatteryStatus();
-                    int batteryLevel = battery.getPercentage();
-                    boolean isCharging = battery.isCharging();
-                    String batteryIcon = isCharging ? "⚡" : (batteryLevel > 20 ? "🔋" : "🪫");
-                    String batteryBadgeColor = isCharging ? "var(--accent-green)" : (batteryLevel <= 20 ? "var(--accent-red)" : "var(--accent-blue)");
-                    String batteryBadgeBg = isCharging ? "rgba(16, 185, 129, 0.12)" : (batteryLevel <= 20 ? "rgba(244, 63, 94, 0.12)" : "rgba(37, 99, 235, 0.12)");
-
-                    Map<String, Object> stats = new HashMap<>();
-                    stats.put("uptime", uptime);
-                    stats.put("requests", ServerLogBus.getRequestCount());
-                    stats.put("usedMemoryMb", usedMemory);
-                    stats.put("totalMemoryMb", totalMemory);
-                    stats.put("batteryLevel", batteryLevel);
-                    stats.put("isCharging", isCharging);
-                    stats.put("batteryTemp", battery.getTemperatureCelsius());
-                    stats.put("timestamp", System.currentTimeMillis());
-
-                    // Send metrics event
-                    emitter.send("metrics", stats);
-
-                    // Send battery html fragment event for HTMX SSE extension
-                    String batteryHtml = String.format(Locale.US,
-                            "<span class='top-badge' style='background: %s; color: %s; border-color: %s;' id='batteryBadge'>" +
-                            "%s %d%%%s</span>",
-                            batteryBadgeBg, batteryBadgeColor, batteryBadgeColor, batteryIcon, batteryLevel, isCharging ? " Chg" : "");
-                    emitter.send("battery", batteryHtml);
-
-                    Thread.sleep(2000);
-                }
-                emitter.complete();
+                emitter.send("metrics", stats);
+                emitter.send("battery", batteryHtml);
             } catch (Exception e) {
+                activeEmitters.remove(emitter);
                 try {
                     emitter.completeWithError(e);
                 } catch (Exception ignored) {}
             }
-        }).start();
-        return emitter;
+        }
+    }
+
+    private void sendSseUpdateToEmitter(SseEmitter emitter) {
+        if (emitter == null || emitter.isCompleted()) {
+            return;
+        }
+        Map<String, Object> stats = new HashMap<>();
+        String batteryHtml = buildTelemetryPayload(stats);
+        try {
+            emitter.send("metrics", stats);
+            emitter.send("battery", batteryHtml);
+        } catch (Exception e) {
+            activeEmitters.remove(emitter);
+            try {
+                emitter.completeWithError(e);
+            } catch (Exception ignored) {}
+        }
+    }
+
+    private String buildTelemetryPayload(Map<String, Object> stats) {
+        long startTime = ServerLogBus.getServerStartTime();
+        String uptime = "00:00:00";
+        if (startTime > 0) {
+            long diff = (System.currentTimeMillis() - startTime) / 1000;
+            long hours = diff / 3600;
+            long minutes = (diff % 3600) / 60;
+            long seconds = diff % 60;
+            uptime = String.format(Locale.getDefault(), "%02d:%02d:%02d", hours, minutes, seconds);
+        }
+        Runtime rt = Runtime.getRuntime();
+        long usedMemory = (rt.totalMemory() - rt.freeMemory()) / (1024 * 1024);
+        long totalMemory = rt.totalMemory() / (1024 * 1024);
+
+        BatteryStatus battery = getBatteryStatus();
+        int batteryLevel = battery.getPercentage();
+        boolean isCharging = battery.isCharging();
+        String batteryIcon = isCharging ? "⚡" : (batteryLevel > 20 ? "🔋" : "🪫");
+        String batteryBadgeColor = isCharging ? "var(--accent-green)" : (batteryLevel <= 20 ? "var(--accent-red)" : "var(--accent-blue)");
+        String batteryBadgeBg = isCharging ? "rgba(16, 185, 129, 0.12)" : (batteryLevel <= 20 ? "rgba(244, 63, 94, 0.12)" : "rgba(37, 99, 235, 0.12)");
+
+        stats.put("uptime", uptime);
+        stats.put("requests", ServerLogBus.getRequestCount());
+        stats.put("usedMemoryMb", usedMemory);
+        stats.put("totalMemoryMb", totalMemory);
+        stats.put("batteryLevel", batteryLevel);
+        stats.put("isCharging", isCharging);
+        stats.put("batteryTemp", battery.getTemperatureCelsius());
+        stats.put("timestamp", System.currentTimeMillis());
+
+        return String.format(Locale.US,
+                "<span class='top-badge' style='background: %s; color: %s; border-color: %s;' id='batteryBadge'>" +
+                "%s %d%%%s</span>",
+                batteryBadgeBg, batteryBadgeColor, batteryBadgeColor, batteryIcon, batteryLevel, isCharging ? " Chg" : "");
     }
 }
