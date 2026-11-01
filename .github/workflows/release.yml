@@ -34,7 +34,7 @@ jobs:
           cache: 'gradle'
 
       - name: Configurar Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
 
       - name: Conceder permissão de execução ao Gradle
         run: chmod +x gradlew
