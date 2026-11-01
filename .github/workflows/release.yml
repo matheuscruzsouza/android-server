@@ -1,0 +1,93 @@
+name: Release APK
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Tag de release (ex.: v2.4.0)'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+  packages: read
+
+jobs:
+  build-and-release:
+    name: Build & Release Android APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configurar JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: Configurar Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Conceder permissão de execução ao Gradle
+        run: chmod +x gradlew
+
+      - name: Compilar APKs (Assemble Debug & Release)
+        run: ./gradlew :app:assembleDebug :app:assembleRelease --stacktrace
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_ACTOR: ${{ github.actor }}
+
+      - name: Determinar Versão e Tag
+        id: vars
+        run: |
+          if [ -n "${{ github.event.inputs.tag_name }}" ]; then
+            TAG_NAME="${{ github.event.inputs.tag_name }}"
+          elif [ -n "${{ github.ref_name }}" ] && [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            TAG_NAME="${{ github.ref_name }}"
+          else
+            TAG_NAME="v$(date +'%Y.%m.%d-%H%M')"
+          fi
+          echo "tag=${TAG_NAME}" >> $GITHUB_OUTPUT
+
+      - name: Renomear APKs para distribuição
+        run: |
+          mkdir -p dist
+          # APK de Debug (pronto para instalar sem assinatura manual)
+          if [ -f app/build/outputs/apk/debug/app-debug.apk ]; then
+            cp app/build/outputs/apk/debug/app-debug.apk dist/S4-Server-${{ steps.vars.outputs.tag }}-debug.apk
+          fi
+          # APK de Release não assinado / ou assinado conforme build
+          if [ -f app/build/outputs/apk/release/app-release-unsigned.apk ]; then
+            cp app/build/outputs/apk/release/app-release-unsigned.apk dist/S4-Server-${{ steps.vars.outputs.tag }}-release-unsigned.apk
+          elif [ -f app/build/outputs/apk/release/app-release.apk ]; then
+            cp app/build/outputs/apk/release/app-release.apk dist/S4-Server-${{ steps.vars.outputs.tag }}-release.apk
+          fi
+          ls -la dist/
+
+      - name: Upload de APKs como Artifacts do Workflow
+        uses: actions/upload-artifact@v4
+        with:
+          name: s4-apks-${{ steps.vars.outputs.tag }}
+          path: dist/*.apk
+          retention-days: 30
+
+      - name: Criar GitHub Release e Anexar APKs
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.vars.outputs.tag }}
+          name: "S4 Storage Server ${{ steps.vars.outputs.tag }}"
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: |
+            dist/*.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
